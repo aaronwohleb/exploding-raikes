@@ -1,0 +1,20 @@
+{
+    "name": "exploding-kittens-server",
+    "version": "1.0.0",
+    "description": "Backend for Exploding Kittens game",
+    "main": "server.js",
+    "scripts": {
+      "dev": "nodemon server.js",
+      "start": "node server.js"
+    },
+    "dependencies": {
+      "express": "^4.18.2",
+      "socket.io": "^4.6.1",
+      "pg": "^8.11.0",
+      "cors": "^2.8.5",
+      "dotenv": "^16.0.3"
+    },
+    "devDependencies": {
+      "nodemon": "^3.0.1"
+    }
+  }
