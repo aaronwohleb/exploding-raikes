@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: gameuser
+      POSTGRES_PASSWORD: gamepass
+      POSTGRES_DB: exploding_kittens
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gameuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Server
+  server:
+    build: ./server
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgres://gameuser:gamepass@db:5432/exploding_kittens
+      PORT: 3001
+      NODE_ENV: development
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    command: npm run dev
+
+  # Frontend React App
+  client:
+    build: ./client
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_BACKEND_URL: http://localhost:3001
+      REACT_APP_WS_URL: ws://localhost:3001
+    depends_on:
+      - server
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true
+
+volumes:
+  postgres_data:
