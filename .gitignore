@@ -152,3 +152,6 @@ Thumbs.db
 
 # Docker
 .docker/
+
+.specstory/
+.history/
