@@ -14,5 +14,8 @@ COPY . .
 # Expose port
 EXPOSE 3000
 
-# Start React development server
-CMD ["npm", "start"]
+# Fixes hot reload issues in Docker for windows
+ENV WATCHPACK_POLLING=true
+
+# Start React development server Using Vite instead of react-scripts
+CMD ["npm", "run", "dev"]

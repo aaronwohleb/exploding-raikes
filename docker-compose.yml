@@ -1,22 +1,15 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
+  # MongoDB Database
   db:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: gameuser
-      POSTGRES_PASSWORD: gamepass
-      POSTGRES_DB: exploding_kittens
+    image: mongo:6.0
+    container_name: exploding_mongo
+    restart: always
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gameuser"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - mongo_data:/data/db
 
   # Backend Server
   server:
@@ -24,12 +17,11 @@ services:
     ports:
       - "3001:3001"
     environment:
-      DATABASE_URL: postgres://gameuser:gamepass@db:5432/exploding_kittens
+      MONGO_URI: mongodb://db:27017/exploding_kittens
       PORT: 3001
       NODE_ENV: development
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     volumes:
       - ./server:/app
       - /app/node_modules
@@ -43,6 +35,7 @@ services:
     environment:
       REACT_APP_BACKEND_URL: http://localhost:3001
       REACT_APP_WS_URL: ws://localhost:3001
+      WATCHPACK_POLLING: "true"
     depends_on:
       - server
     volumes:
@@ -52,4 +45,4 @@ services:
     tty: true
 
 volumes:
-  postgres_data:
+  mongo_data:
