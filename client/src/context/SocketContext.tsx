@@ -6,7 +6,7 @@ interface SocketContextType {
   socket: Socket | null;
   isConnected: boolean;
   joinRoom: (roomId: string) => void;
-  leaveRoom: () => void;
+  leaveRoom: (roomId: string) => void;
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -17,31 +17,42 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth(); // We need the user to authenticate the socket
 
   useEffect(() => {
-    // Initialize Socket if user is logged in
-    if (user && !socket) {
-      const newSocket = io('http://localhost:3000', {
-        autoConnect: false,
-        auth: { token: localStorage.getItem('token') } // Send JWT if you have one
+    // Initialize Socket if user is logged in by pulling user's JWT
+    const token = localStorage.getItem('token');
+    if (user && token && !socket) {
+      const newSocket = io('http://localhost:3001', {
+        autoConnect: true,
+        auth: { token }, 
+        reconnection: true,
+        reconnectionAttempts: 5
       });
 
       setSocket(newSocket);
 
-      newSocket.on('connect', () => setIsConnected(true));
-      newSocket.on('disconnect', () => setIsConnected(false));
-      
+      // listeners
+      newSocket.on('connect', () => {
+        console.log("socket connected with ID:", newSocket.id);
+        setIsConnected(true);
+      });
+
+      newSocket.on('disconnect', () => {
+        console.log("socket disconnected")
+        setIsConnected(false);
+    });
       // TODO: Add global game listeners to catch global events (ie kicking a player)
 
       newSocket.connect();
 
       return () => {
         newSocket.disconnect();
+        setSocket(null);
       };
     }
   }, [user]);
 
   const joinRoom = (roomId: string) => {
-    if (socket) {
-      socket.emit('join_room', { roomId, userId: user?._id });
+    if (socket && isConnected) {
+      socket.emit('join_room', roomId);
     }
   };
 

@@ -3,7 +3,7 @@ import { User, AuthResponse } from '../types/types';
 
 // Decided to use axios, can change if you want to
 const apiClient = axios.create({
-  baseURL: 'http://localhost:3000/api', // Backend URL
+  baseURL: 'http://localhost:3001/api', // Backend URL
   headers: {
     'Content-Type': 'application/json',
   },
