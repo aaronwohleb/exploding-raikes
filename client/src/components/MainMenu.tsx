@@ -262,7 +262,7 @@ function MenuButton({
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="w-64 py-4 text-xl font-normal text-[#FCF8EE] bg-[#B81C27] hover:bg-[#C81C27] rounded-xl shadow-sm transition-colors"
+      className="w-64 py-4 text-xl font-normal text-[#FCF8EE] bg-[#B81C27] hover:bg-[#C81C27] rounded-[4px] shadow-sm transition-colors"
     >
       {children}
     </motion.button>

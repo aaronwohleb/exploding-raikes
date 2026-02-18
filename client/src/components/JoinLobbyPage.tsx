@@ -97,11 +97,11 @@ export default function JoinLobbyPage() {
               className="flex items-center gap-3 p-2 group"
             >
               <div className="text-right">
-                <p className="text-xl font-medium text-gray-900 group-hover:text-red-400 transition-colors">
+                <p className="text-xl font-medium text-gray-900 group-hover:text-[#B81C27] transition-colors">
                   {user.username}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-red-300 rounded-xl flex items-center justify-center text-white shadow-sm group-hover:bg-red-400 transition-colors">
+              <div className="w-12 h-12 bg-[#B81C27] rounded-xl flex items-center justify-center text-white shadow-sm group-hover:bg-[#C81C27] transition-colors">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   className="h-6 w-6"
