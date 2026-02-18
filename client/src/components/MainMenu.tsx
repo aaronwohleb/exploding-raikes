@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { register } from "module";
 
 export default function MainMenu() {
   const navigate = useNavigate();
@@ -39,7 +38,7 @@ export default function MainMenu() {
   };
 
   return (
-    <div className="relative w-full h-screen bg-white text-gray-800 font-sans overflow-hidden selection:bg-red-100">
+    <div className="relative w-full h-screen bg-[#FCF8EE] text-gray-800 font-sans overflow-hidden selection:bg-[#B81C27]">
       {/* --- TOP HEADER --- */}
       <header className="absolute top-0 left-0 w-full p-8 flex justify-between items-start z-10">
         <div className="w-1/3"></div> {/* Spacer for balance */}
@@ -72,13 +71,13 @@ export default function MainMenu() {
                 className="flex items-center gap-3 p-2 group"
               >
                 <div className="text-right">
-                  <p className="text-xl font-medium text-gray-900 group-hover:text-red-400 transition-colors">
+                  <p className="text-xl font-medium text-gray-900 group-hover:text-[#B81C27] transition-colors">
                     {user.username}
                   </p>
                 </div>
 
                 {/* Avatar Square as a Button */}
-                <div className="w-12 h-12 bg-red-300 rounded-xl flex items-center justify-center text-white shadow-sm group-hover:bg-red-400 transition-colors">
+                <div className="w-12 h-12 bg-[#B81C27] rounded-xl flex items-center justify-center text-white shadow-sm group-hover:bg-[#C81C27] transition-colors">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-6 w-6"
@@ -198,7 +197,7 @@ export default function MainMenu() {
                   <input
                     required
                     type="text"
-                    className="w-full p-4 bg-gray-100 rounded-xl focus:ring-2 focus:ring-red-300 focus:outline-none transition-all"
+                    className="w-full p-4 bg-gray-100 rounded-xl focus:ring-2 focus:ring-[#C81C27] focus:outline-none transition-all"
                     placeholder="Username"
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
@@ -208,7 +207,7 @@ export default function MainMenu() {
                 <input
                   required
                   type="email"
-                  className="w-full p-4 bg-gray-100 rounded-xl focus:ring-2 focus:ring-red-300 focus:outline-none transition-all"
+                  className="w-full p-4 bg-gray-100 rounded-xl focus:ring-2 focus:ring-[#C81C27] focus:outline-none transition-all"
                   placeholder="Email Address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -217,13 +216,13 @@ export default function MainMenu() {
                 <input
                   required
                   type="password"
-                  className="w-full p-4 bg-gray-100 rounded-xl focus:ring-2 focus:ring-red-300 focus:outline-none transition-all"
+                  className="w-full p-4 bg-gray-100 rounded-xl focus:ring-2 focus:ring-[#C81C27] focus:outline-none transition-all"
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
 
-                <button className="mt-4 w-full bg-red-300 hover:bg-red-400 text-gray-900 font-medium text-lg py-4 rounded-xl transition-colors">
+                <button className="mt-4 w-full bg-[#B81C27] hover:bg-[#C81C27] text-[#FCF8EE] font-medium text-lg py-4 rounded-xl transition-colors">
                   {authMode === "LOGIN" ? "Login" : "Sign Up"}
                 </button>
               </form>
@@ -234,7 +233,7 @@ export default function MainMenu() {
                   onClick={() =>
                     setAuthMode(authMode === "LOGIN" ? "REGISTER" : "LOGIN")
                   }
-                  className="text-gray-500 hover:text-red-400 text-sm font-medium transition-colors"
+                  className="text-gray-500 hover:text-[#B81C27] text-sm font-medium transition-colors"
                 >
                   {authMode === "LOGIN"
                     ? "Create an account"
@@ -263,7 +262,7 @@ function MenuButton({
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="w-64 py-4 text-xl font-normal text-gray-900 bg-red-300 hover:bg-red-400 rounded-xl shadow-sm transition-colors"
+      className="w-64 py-4 text-xl font-normal text-[#FCF8EE] bg-[#B81C27] hover:bg-[#C81C27] rounded-xl shadow-sm transition-colors"
     >
       {children}
     </motion.button>
@@ -288,7 +287,7 @@ function VolumeSlider({
         max="100"
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-300"
+        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#B81C27]"
       />
     </div>
   );
