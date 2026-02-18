@@ -38,7 +38,7 @@ export default function MainMenu() {
   };
 
   return (
-    <div className="relative w-full h-screen bg-[#FCF8EE] text-gray-800 font-sans overflow-hidden selection:bg-[#B81C27]">
+    <div className="relative w-full h-screen bg-[#FCF8EE] text-gray-800 font-sans overflow-hidden selection:bg-red-100">
       {/* --- TOP HEADER --- */}
       <header className="absolute top-0 left-0 w-full p-8 flex justify-between items-start z-10">
         <div className="w-1/3"></div> {/* Spacer for balance */}

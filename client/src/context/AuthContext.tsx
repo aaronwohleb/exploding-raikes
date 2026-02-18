@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { User }  from "../types/models"
+import { User }  from "../types/types"
 import * as api from '../services/api';
 
 
@@ -7,7 +7,7 @@ import * as api from '../services/api';
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (u: string, e: string, p: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 

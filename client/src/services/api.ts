@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { User, AuthResponse } from '../types/models';
+import { User, AuthResponse } from '../types/types';
 
 // Decided to use axios, can change if you want to
 const apiClient = axios.create({
