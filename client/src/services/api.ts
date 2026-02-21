@@ -14,32 +14,24 @@ const apiClient = axios.create({
 export const loginUser = async (email: string, password: string): Promise<User> => {
   // TODO: Verify and login a user (maybe idk)
 
-  // TEMPORARY MOCK LOGIN (Remove when backend is ready)
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        _id: 'mock_user_id',
-        username: 'bossman67',
-        email: email,
-      });
-    }, 500);
+  const response = await apiClient.post<AuthResponse>("/login", {
+    email,
+    password
   });
+
+  return response.data.user;
 };
 
 export const registerUser = async (username: string, email: string, password: string): Promise<User> => {
   // TODO: Verify and create a user.
 
-
-  // TEMPORARY MOCK AUTOLOGIN
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        _id: 'mock_' + Date.now(),
-        username,
-        email,
-      });
-    }, 500);
+  const response = await apiClient.post<AuthResponse>("/register", {
+    username,
+    email,
+    password
   });
+
+  return response.data.user;  
 };
 
 // --- GAME SERVICES ---
