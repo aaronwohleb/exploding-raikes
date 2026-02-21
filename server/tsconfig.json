@@ -12,6 +12,5 @@
     "skipLibCheck": true,   
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["./**/*", "../client/src/backend"],
   "exclude": ["node_modules"]
 }
