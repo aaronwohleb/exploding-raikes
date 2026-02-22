@@ -10,7 +10,7 @@ class DrawDeck {
      */
     public constructor() {
         this._deck = [];
-        // Make full deck of cards
+        // Make full deck of cards (Hard coded and subject to change)
         for (let i: number = 0; i < 4; i++) {
             this.deck.push(new Card(CardType.Attack, i, "Generic"));
         }
@@ -59,7 +59,17 @@ class DrawDeck {
      * @param index the spot in the deck to replace it
      */
     public replaceExplodingKitten(kitten: Card, index: number) {
-        // Insert Kitten into deck
+        try {
+            this.deck.splice(index, 0, kitten);
+        } catch (error) {
+            // If invalid deck position, assign to nearest available position
+            if (index < 0) {
+                this.deck.unshift(kitten);
+            } else {
+                this.deck.push(kitten);
+            }
+        }
+        
     }
 
     /**
@@ -69,14 +79,26 @@ class DrawDeck {
      * @returns the array of cards to show
      */
     public seeFuture(numCards: number): Card[] {
-        return [this.deck[0]];
+        if (numCards > this.deck.length) {
+            return this.deck.slice(0, this.deck.length);
+        }
+        return this.deck.slice(0, numCards);
     }
 
     /**
      * This function shuffles the deck of cards.
      */
     public shuffleDeck() {
-        // Shuffle the deck
+        let currentIndex: number = this.deck.length;
+        let randIndex: number = -1;
+
+        while (currentIndex !== 0) {
+            // Pick a random remaining element.
+            randIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            // Swap it with the current element
+            [this.deck[currentIndex], this.deck[randIndex]] = [this.deck[randIndex], this.deck[currentIndex]];
+        }
     }
 
     /**

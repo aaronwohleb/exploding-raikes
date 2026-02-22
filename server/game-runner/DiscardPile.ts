@@ -17,8 +17,9 @@ class DiscardPile {
      * 
      * @param player the player that will draw the card
      */
-    public drawFromDiscard(player: Player) {
-        // draw card of choice from DCP
+    public drawFromDiscard(player: Player, index: number) {
+        let cardChoice: Card = this.pile.splice(index, 1)[0];
+        player.hand.push(cardChoice);
     }
 
     /**

@@ -34,7 +34,22 @@ class Player {
      * @param game the game state before the draw
      */
     public drawCard(game: Game) {
-        // Draw a card
+        let drawnCard: Card = game.drawDeck.deck.shift();
+        if (drawnCard.type == CardType.Exploding_Kitten) {
+            let hasDefuse: boolean = false;
+            let currIndex: number = 0;
+            while (!hasDefuse && currIndex < this.hand.length) {
+                if (this.hand[currIndex].type == CardType.Defuse) {
+                    hasDefuse = true;
+                }
+            }
+            if (hasDefuse) {
+                let defuse: Card = this.hand.splice(currIndex, 1)[0];
+                game.discardPile.pile.unshift(drawnCard, defuse);
+            } else {
+                this.lose(game);
+            }
+        }
     }
 
     /**
@@ -45,6 +60,11 @@ class Player {
     public checkMove(): boolean {
         // Check if legal
         return true;
+    }
+
+    public lose(game: Game) {
+        game.discardPile.pile.unshift(...this.hand);
+        game.playerList = game.playerList.filter(card => card !== this)
     }
 
     /**
