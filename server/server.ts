@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import http from 'http';
 import cors from 'cors';
 import mongoose from 'mongoose';
+import authRoutes from "./routes/authRoutes.ts";
 
 const app = express();
 const server = http.createServer(app);
@@ -19,6 +20,9 @@ mongoose.connect(MONGO_URI)
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'Server running', database: 'MongoDB' });
 });
+
+// Connect routes to server
+app.use("/api", authRoutes);
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
