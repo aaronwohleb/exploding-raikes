@@ -1,27 +1,14 @@
-import mongoose, { Document } from 'mongoose';
+import mongoose, { Document, Types } from 'mongoose';
+import './User'; // Make sure User model is loaded
 
-export interface IPlayer {
-  userId: string;
-  username: string;
-  isReady: boolean;
-  joinedAt?: Date;
-}
-
-
-interface ILobby extends Document {
+export interface ILobby extends Document {
   code: string;
-  hostId: string;
-  players: IPlayer[];
+  hostId: Types.ObjectId;  // Reference to User
+  players: Types.ObjectId[]; // Array of User ObjectIds
+  readyStatus: Map<string, boolean>; // Dictionary of userId -> ready status
   maxPlayers: number;
   status: 'waiting' | 'starting' | 'playing' | 'closed';
 }
-
-const playerSchema = new mongoose.Schema<IPlayer>({
-  userId: { type: String, required: true },
-  username: { type: String, required: true },
-  isReady: { type: Boolean, default: false },
-  joinedAt: { type: Date, default: Date.now }
-});
 
 const lobbySchema = new mongoose.Schema<ILobby>({
   code: { 
@@ -30,9 +17,24 @@ const lobbySchema = new mongoose.Schema<ILobby>({
     unique: true,
     uppercase: true
   },
-  hostId: { type: String, required: true },
-  players: [playerSchema],
-  maxPlayers: { type: Number, default: 4 },
+  hostId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User',
+    required: true 
+  },
+  players: [{ 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User' 
+  }],
+  readyStatus: {
+    type: Map,
+    of: Boolean,
+    default: {}
+  },
+  maxPlayers: { 
+    type: Number, 
+    default: 4 
+  },
   status: {
     type: String,
     enum: ['waiting', 'starting', 'playing', 'closed'],
