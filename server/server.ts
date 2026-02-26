@@ -2,10 +2,14 @@ import express, { Request, Response } from 'express';
 import http from 'http';
 import cors from 'cors';
 import mongoose from 'mongoose';
+<<<<<<< HEAD
 import { Server } from 'socket.io';
 import { Lobby, IPlayer } from './src/lobby/models/Lobby'; 
 import { generateUniqueLobbyCode } from './src/utils/lobbyCode'; 
 
+=======
+import authRoutes from "./routes/authRoutes.ts";
+>>>>>>> main
 
 const app = express();
 const server = http.createServer(app);
@@ -27,6 +31,7 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'Server running', database: 'MongoDB' });
 });
 
+<<<<<<< HEAD
 
 
 app.post('/api/lobbies', async (req, res) => {
@@ -248,6 +253,10 @@ app.delete('/api/lobbies/:code/players/:userId', async (req, res) => {
     res.status(500).json({ error: 'Failed to leave lobby' });
   }
 });
+=======
+// Connect routes to server
+app.use("/api", authRoutes);
+>>>>>>> main
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
