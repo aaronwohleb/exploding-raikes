@@ -1,5 +1,12 @@
 import { Request, Response } from "express";
 import User from "../models/User";
+import { FrontendUser } from "../types/types";
+
+const toFrontendUser = (user: any): FrontendUser => ({
+  id: user._id.toString(),
+  username: user.username,
+  email: user.email,
+});
 
 // REGISTER USER
 export const registerUser = async (req: Request, res: Response) => {
@@ -14,7 +21,7 @@ export const registerUser = async (req: Request, res: Response) => {
     const newUser = new User({ username, email, password });
     await newUser.save();
 
-    res.status(201).json({ user: newUser });
+    res.status(201).json({ user: toFrontendUser(newUser) });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
@@ -30,7 +37,7 @@ export const loginUser = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    res.json({ user });
+    res.json({ user: toFrontendUser(user) });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
