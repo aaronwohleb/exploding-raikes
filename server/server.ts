@@ -2,14 +2,11 @@ import express, { Request, Response } from 'express';
 import http from 'http';
 import cors from 'cors';
 import mongoose from 'mongoose';
-<<<<<<< HEAD
 import { Server } from 'socket.io';
-import { Lobby, IPlayer } from './src/lobby/models/Lobby'; 
-import { generateUniqueLobbyCode } from './src/utils/lobbyCode'; 
-
-=======
-import authRoutes from "./routes/authRoutes.ts";
->>>>>>> main
+import { Lobby } from './models/Lobby';
+import { generateUniqueLobbyCode } from './src/utils/lobbyCode';
+import User from './models/User';
+import authRoutes from "./routes/authRoutes";
 
 const app = express();
 const server = http.createServer(app);
@@ -17,7 +14,10 @@ const io = new Server(server, {
   cors: { origin: "http://localhost:3000", credentials: true }
 });
 
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:3000",
+  credentials: true
+}));
 app.use(express.json());
 
 // MongoDB Connection
@@ -31,12 +31,68 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'Server running', database: 'MongoDB' });
 });
 
-<<<<<<< HEAD
+app.use("/api", authRoutes);
+
+function formatLobbyResponse(lobby: any) {
+  if (!lobby) return null;
+  
+  const lobbyObj = lobby.toObject();
+  const readyStatus = lobby.readyStatus || new Map();
+  
+  return {
+    ...lobbyObj,
+    players: lobbyObj.players.map((player: any) => {
+      // Handle both populated and unpopulated players
+      const playerId = player._id?.toString() || player.toString();
+      
+      // If player is populated (has username)
+      if (player.username) {
+        return {
+          ...player,
+          isReady: readyStatus.get(playerId) || false
+        };
+      }
+      
+      // If player is just an ID
+      return {
+        _id: playerId,
+        isReady: readyStatus.get(playerId) || false
+      };
+    })
+  };
+}
+
+
+io.on('connection', (socket) => {
+  console.log('Player connected:', socket.id);
+  
+  // Listen for 'join_room' (matches frontend)
+  socket.on('join_room', (roomId) => {
+    socket.join(`lobby:${roomId}`);
+    console.log(`Socket ${socket.id} joined lobby room: ${roomId}`);
+  });
+  
+  // Listen for 'leave_room' (matches frontend)
+  socket.on('leave_room', () => {
+    // Leave all rooms except the default room (socket.id)
+    const rooms = Array.from(socket.rooms);
+    rooms.forEach(room => {
+      if (room !== socket.id) {
+        socket.leave(room);
+        console.log(`Socket ${socket.id} left room: ${room}`);
+      }
+    });
+  });
+  
+  socket.on('disconnect', () => {
+    console.log('Player disconnected:', socket.id);
+  });
+});
 
 
 app.post('/api/lobbies', async (req, res) => {
   try {
-    const { userId, maxPlayers } = req.body; // username comes from User model
+    const { userId, maxPlayers } = req.body;
     if (!userId) {
       return res.status(400).json({ error: 'userId required' });
     }
@@ -51,8 +107,8 @@ app.post('/api/lobbies', async (req, res) => {
     const lobby = new Lobby({
       code,
       hostId: userId,
-      players: [userId], // Add host to players array
-      readyStatus: { [userId]: false }, // Initialize ready status
+      players: [userId],
+      readyStatus: { [userId]: false },
       maxPlayers: maxPlayers || 4,
       status: 'waiting'
     });
@@ -64,14 +120,14 @@ app.post('/api/lobbies', async (req, res) => {
       .populate('hostId', 'username email')
       .populate('players', 'username email');
       
-    res.status(201).json(populatedLobby);
+    res.status(201).json(formatLobbyResponse(populatedLobby));
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to create lobby' });
   }
 });
 
-// JOIN a lobby
+// Join a lobby
 app.post('/api/lobbies/join', async (req, res) => {
   try {
     const { code, userId } = req.body;
@@ -117,14 +173,14 @@ app.post('/api/lobbies/join', async (req, res) => {
       readyCount
     });
     
-    res.json(populatedLobby);
+    res.json(formatLobbyResponse(populatedLobby));
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to join lobby' });
   }
 });
 
-// GET lobby details
+// Get lobby details
 app.get('/api/lobbies/:code', async (req, res) => {
   try {
     const lobby = await Lobby.findOne({ code: req.params.code.toUpperCase() })
@@ -133,22 +189,13 @@ app.get('/api/lobbies/:code', async (req, res) => {
       
     if (!lobby) return res.status(404).json({ error: 'Lobby not found' });
     
-    // Transform the response to include ready status with user info
-    const response = {
-      ...lobby.toObject(),
-      players: lobby.players.map(player => ({
-        ...player.toObject(),
-        isReady: lobby.readyStatus.get(player._id.toString()) || false
-      }))
-    };
-    
-    res.json(response);
+    res.json(formatLobbyResponse(lobby));
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch lobby' });
   }
 });
 
-// UPDATE player ready status
+// Update player ready status
 app.patch('/api/lobbies/:code/players/:userId/ready', async (req, res) => {
   try {
     const { code, userId } = req.params;
@@ -184,21 +231,13 @@ app.patch('/api/lobbies/:code/players/:userId/ready', async (req, res) => {
       .populate('hostId', 'username email')
       .populate('players', 'username email');
     
-    const response = {
-      ...populatedLobby?.toObject(),
-      players: populatedLobby?.players.map(player => ({
-        ...player.toObject(),
-        isReady: lobby.readyStatus.get(player._id.toString()) || false
-      }))
-    };
-    
-    res.json(response);
+    res.json(formatLobbyResponse(populatedLobby));
   } catch (error) {
     res.status(500).json({ error: 'Failed to update ready status' });
   }
 });
 
-// LEAVE lobby
+// Leave lobby
 app.delete('/api/lobbies/:code/players/:userId', async (req, res) => {
   try {
     const { code, userId } = req.params;
@@ -207,7 +246,7 @@ app.delete('/api/lobbies/:code/players/:userId', async (req, res) => {
     if (!lobby) return res.status(404).json({ error: 'Lobby not found' });
     
     // Remove user from players array and readyStatus
-    lobby.players = lobby.players.filter(id => id.toString() !== userId);
+    lobby.players = lobby.players.filter((id: any) => id.toString() !== userId);
     lobby.readyStatus.delete(userId);
     
     if (lobby.players.length === 0) {
@@ -240,23 +279,15 @@ app.delete('/api/lobbies/:code/players/:userId', async (req, res) => {
       .populate('hostId', 'username email')
       .populate('players', 'username email');
     
-    const response = {
-      ...populatedLobby?.toObject(),
-      players: populatedLobby?.players.map(player => ({
-        ...player.toObject(),
-        isReady: lobby.readyStatus.get(player._id.toString()) || false
-      }))
-    };
-    
-    res.json(response);
+    res.json(formatLobbyResponse(populatedLobby));
   } catch (error) {
     res.status(500).json({ error: 'Failed to leave lobby' });
   }
 });
-=======
+
 // Connect routes to server
 app.use("/api", authRoutes);
->>>>>>> main
+
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {

@@ -1,11 +1,10 @@
 import mongoose, { Document, Types } from 'mongoose';
-import './User'; // Make sure User model is loaded
 
 export interface ILobby extends Document {
   code: string;
-  hostId: Types.ObjectId;  // Reference to User
-  players: Types.ObjectId[]; // Array of User ObjectIds
-  readyStatus: Map<string, boolean>; // Dictionary of userId -> ready status
+  hostId: Types.ObjectId;
+  players: Types.ObjectId[];
+  readyStatus: Map<string, boolean>;
   maxPlayers: number;
   status: 'waiting' | 'starting' | 'playing' | 'closed';
 }
