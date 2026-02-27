@@ -24,7 +24,7 @@ class Card {
      * This function applies the Card's effects to the game.
      * 
      * @param game the game being played on which to apply the Card's effects
-     * @param target the target of the Card's effects
+     * @param target the target of the Card's effects NOTE: for no target, the target is the current player
      * @returns an action code, which will affect the state of the game after the function executes
      */
     public playCard(game: Game, target: Player): number {
