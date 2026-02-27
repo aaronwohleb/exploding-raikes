@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function JoinLobbyPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { currentFrontendUser } = useAuth();
 
   const [lobbyCode, setLobbyCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -91,14 +91,14 @@ export default function JoinLobbyPage() {
           animate={{ x: 0, opacity: 1 }}
           className="w-1/3 flex justify-end"
         >
-          {user && (
+          {currentFrontendUser && (
             <button
               onClick={() => navigate("/profile")}
               className="flex items-center gap-3 p-2 group"
             >
               <div className="text-right">
                 <p className="text-xl font-medium text-gray-900 group-hover:text-[#B81C27] transition-colors">
-                  {user.username}
+                  {currentFrontendUser.username}
                 </p>
               </div>
               <div className="w-12 h-12 bg-[#B81C27] rounded-xl flex items-center justify-center text-white shadow-sm group-hover:bg-[#C81C27] transition-colors">

@@ -3,7 +3,7 @@
  * — intentionally excludes password and Mongoose internals
  */
 export interface FrontendUser {
-  id: string;
+  _id: string;
   username: string;
   email: string;
 }
@@ -13,5 +13,6 @@ export interface FrontendUser {
  * Standard wrapper for auth endpoint responses
  */
 export interface AuthResponse {
-  user: FrontendUser;
+  frontendUser: FrontendUser;
+  token: string; // JWT Token
 }

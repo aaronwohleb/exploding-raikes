@@ -1,4 +1,4 @@
-export interface FrontedUser {
+export interface FrontendUser {
   _id: string;
   username: string;
   email: string;
@@ -10,13 +10,13 @@ export interface FrontedUser {
 
 export interface GameState {
   roomId: string;
-  players: FrontedUser[];
+  players: FrontendUser[];
   activePlayerId: string;
   gameStatus: 'LOBBY' | 'PLAYING' | 'GAME_OVER';
   // Add other game specific fields
 }
 
 export interface AuthResponse {
-  user: FrontedUser;
+  frontendUser: FrontendUser;
   token: string; // JWT Token
 }

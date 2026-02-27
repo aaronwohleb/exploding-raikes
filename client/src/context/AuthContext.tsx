@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { User }  from "../types/types"
+import { FrontendUser }  from "../types/types"
 import * as api from '../services/api';
 
 
 // Define Auth Context
 interface AuthContextType {
-  user: User | null;
+  currentFrontendUser: FrontendUser | null;
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -14,22 +14,27 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<FrontendUser | null>(null);
 
   const login = async (email: string, password: string) => {
-    const userData = await api.loginUser(email, password);
-    setUser(userData);
+    const {frontendUser, token} = await api.loginUser(email, password);
+    localStorage.setItem('token', token); // Store JWT token for future authenticated requests
+    setUser(frontendUser); // Update context with the authenticated user
   };
 
   const register = async (username: string, email: string, password: string) => {
-    const userData = await api.registerUser(username, email, password);
-    setUser(userData);
+    const {frontendUser, token} = await api.registerUser(username, email, password);
+    localStorage.setItem('token', token); // Store JWT token for future authenticated requests
+    setUser(frontendUser); // Update context with the registered user
   };
 
-  const logout = () => setUser(null);
+  const logout = () => {
+    localStorage.removeItem('token'); // Clear JWT token from storage
+    setUser(null);
+  }
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ currentFrontendUser: user, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

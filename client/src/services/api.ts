@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { User, AuthResponse } from '../types/types';
+import { AuthResponse } from '../types/types';
 
 // Axios instance configured to point at the local backend
 const apiClient = axios.create({
@@ -16,17 +16,16 @@ const apiClient = axios.create({
  * the authenticated frontend user
  * @param email 
  * @param password 
- * @returns authenticated frontend user
+ * @returns authenticated frontend user object and JWT token
  */
-export const loginUser = async (email: string, password: string): Promise<User> => {
-  // TODO: Verify and login a user (maybe idk)
+export const loginUser = async (email: string, password: string): Promise<AuthResponse> => {
 
   const response = await apiClient.post<AuthResponse>("/login", {
     email,
     password
   });
 
-  return response.data.user;
+  return response.data;
 };
 
 /**
@@ -37,14 +36,14 @@ export const loginUser = async (email: string, password: string): Promise<User> 
  * @param password 
  * @returns frontend user
  */
-export const registerUser = async (username: string, email: string, password: string): Promise<User> => {
+export const registerUser = async (username: string, email: string, password: string): Promise<AuthResponse> => {
   const response = await apiClient.post<AuthResponse>("/register", {
     username,
     email,
     password
   });
 
-  return response.data.user;  
+  return response.data;  
 };
  // GAME SERVICES
 
