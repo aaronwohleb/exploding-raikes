@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { AuthResponse } from '../types/types';
+import { AuthResponse, LobbyState } from '../types/types';
 
 // Axios instance configured to point at the local backend
 const apiClient = axios.create({
@@ -7,6 +7,18 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token && config.headers) {
+    // Attach the JWT token to the Authorization header
+    config.headers.Authorization = `Bearer ${token}`; 
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
 });
 
 // AUTH SERVICES
@@ -47,8 +59,34 @@ export const registerUser = async (username: string, email: string, password: st
 };
  // GAME SERVICES
 
-export const createLobby = async (userId: string): Promise<string> => {
-  // Should prolly return the new Room ID
-  // Should prolly post the new generated code and check for existing lobby code
-  return 'XY99'; // Mock Room Code
+/**
+ * Tells the backend to create a new lobby and returns the generated code.
+ */
+export const createLobby = async (userId: string, maxPlayers: number = 8): Promise<LobbyState> => {
+  const response = await apiClient.post("/lobbies", {
+    userId,
+    maxPlayers
+  });
+  console.log("RAW CREATE DATA FROM BACKEND:", response.data);
+  // Pull the lobby code out of the response
+  return response.data; 
+};
+
+/**
+ * Attempts to join an existing lobby by code.
+ */
+export const joinLobby = async (code: string, userId: string): Promise<LobbyState> => {
+  const response = await apiClient.post("/lobbies/join", {
+    code,
+    userId
+  });
+  
+  return response.data;
+};
+
+export const updateReadyStatus = async (code: string, userId: string, isReady: boolean): Promise<LobbyState> => {
+  const response = await apiClient.patch<LobbyState>(`/lobbies/${code}/players/${userId}/ready`, {
+    isReady
+  });
+  return response.data;
 };

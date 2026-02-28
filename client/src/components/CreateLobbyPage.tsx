@@ -2,20 +2,14 @@ import React, { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useLobby } from '../context/LobbyContext';
 
-// getting a random 6-character code like "A3X9KQ"
-function generateCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  return Array.from(
-    { length: 6 },
-    () => chars[Math.floor(Math.random() * chars.length)],
-  ).join("");
-}
 // we can change this accordingly and figure how to store i just wanted to see what this would look like
 
 export default function CreateLobbyPage() {
   const navigate = useNavigate();
   const { currentFrontendUser } = useAuth();
+  const { createNewLobby } = useLobby();
 
   const [lobbyCode, setLobbyCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,14 +21,15 @@ export default function CreateLobbyPage() {
     setError(null);
     setIsLoading(true);
 
+    if (!currentFrontendUser) {
+    setError("You must be logged in to create a lobby.");
+    return;
+  }
+
     try {
-      const code = generateCode();
-
-      // TODO: register the lobby on your backend
-      // await createLobby({ code, maxPlayers: 8 });
-
-      await new Promise((res) => setTimeout(res, 700)); // simulated delay
+      const code = await createNewLobby(currentFrontendUser._id);
       setLobbyCode(code);
+
     } catch (err) {
       setError("Failed to create lobby. Please try again.");
     } finally {
