@@ -27,10 +27,12 @@ export default function CreateLobbyPage() {
   }
 
     try {
+      console.log("creating lobby for user id", currentFrontendUser._id);
       const code = await createNewLobby(currentFrontendUser._id);
       setLobbyCode(code);
 
     } catch (err) {
+      console.error("THE HIDDEN ERROR:", err);
       setError("Failed to create lobby. Please try again.");
     } finally {
       setIsLoading(false);

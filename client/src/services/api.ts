@@ -90,3 +90,7 @@ export const updateReadyStatus = async (code: string, userId: string, isReady: b
   });
   return response.data;
 };
+
+export const leaveLobby = async (code: string, userId: string): Promise<void> => {
+  await apiClient.delete(`/lobbies/${code}/players/${userId}`);
+};

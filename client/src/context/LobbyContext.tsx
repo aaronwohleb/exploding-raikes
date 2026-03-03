@@ -10,6 +10,7 @@ interface LobbyContextType {
   joinExistingLobby: (code: string, userId: string) => Promise<void>;
   clearLobby: () => void;
   toggleReadyStatus: (userId: string, isReady: boolean) => Promise<void>;
+  leaveCurrentLobby: (userId: string) => Promise<void>;
 }
 
 const LobbyContext = createContext<LobbyContextType | undefined>(undefined);
@@ -23,14 +24,14 @@ export function LobbyProvider({ children }: { children: ReactNode }) {
 useEffect(() => {
     if (!socket) return;
 
-    // 1. Listen for new players joining
+    // Listen for new players joining
     const handlePlayerJoined = (data: any) => {
       console.log("Socket heard a new player join!", data);
       
       setCurrentLobby((prevLobby) => {
         if (!prevLobby) return prevLobby;
         
-        // Safety check: Prevent duplicating the player if React fires twice
+        // Prevent duplicating the player if React fires twice
         if (prevLobby.players.some(p => p._id === data.userId)) return prevLobby;
 
         // Map the backend 'userId' to the frontend '_id'
@@ -47,7 +48,7 @@ useEffect(() => {
       });
     };
 
-    // 2. Listen for players changing their ready status
+    // Listen for players changing their ready status
     const handlePlayerReady = (data: any) => {
       console.log("Socket heard a player ready up!", data);
 
@@ -56,7 +57,7 @@ useEffect(() => {
         return {
           ...prevLobby,
           readyStatus: { ...prevLobby.readyStatus, [data.userId]: data.isReady }
-        } as LobbyState; // TypeScript fix
+        } as LobbyState; 
       });
     };
 
@@ -72,6 +73,7 @@ useEffect(() => {
 
         return {
           ...prevLobby,
+          hostId: data.newHostId || prevLobby.hostId, // Reassign host if needed
           players: prevLobby.players.filter(p => p._id !== data.userId),
           readyStatus: updatedReadyStatus
         } as LobbyState; // TypeScript fix
@@ -145,8 +147,23 @@ useEffect(() => {
     }
   };
 
+  const leaveCurrentLobby = async (userId: string) => {
+    if (!currentLobby) return;
+    
+    try {
+      // Tell the database
+      await api.leaveLobby(currentLobby.code, userId);
+      // Disconnect the socket from the room
+      leaveRoom(currentLobby.code);
+      // Clear local state
+      setCurrentLobby(null);
+    } catch (error) {
+      console.error("Failed to leave lobby on server:", error);
+    }
+  };
+
   return (
-    <LobbyContext.Provider value={{ currentLobby, createNewLobby, joinExistingLobby, clearLobby, toggleReadyStatus }}>
+    <LobbyContext.Provider value={{ currentLobby, createNewLobby, joinExistingLobby, clearLobby, toggleReadyStatus, leaveCurrentLobby }}>
       {children}
     </LobbyContext.Provider>
   );

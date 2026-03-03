@@ -51,8 +51,11 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   }, [currentFrontendUser]);
 
   const joinRoom = (roomId: string) => {
-    if (socket && isConnected) {
-      socket.emit('join_room', roomId);
+    if (socket && isConnected && currentFrontendUser) {
+      socket.emit('join_room', {
+        roomId,
+        userId: currentFrontendUser._id
+      });
     }
   };
 

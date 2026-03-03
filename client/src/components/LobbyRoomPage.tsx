@@ -8,7 +8,7 @@ export default function LobbyRoomPage() {
   const navigate = useNavigate();
   const { code } = useParams<{ code: string }>(); // Gets the code from /lobby/:code
   const { currentFrontendUser } = useAuth();
-  const { currentLobby, clearLobby, toggleReadyStatus } = useLobby();
+  const { currentLobby, clearLobby, toggleReadyStatus, leaveCurrentLobby } = useLobby();
 
   const [copied, setCopied] = useState(false);
   const [isTogglingReady, setIsTogglingReady] = useState(false);
@@ -29,7 +29,7 @@ export default function LobbyRoomPage() {
       </div>
     );
   }
-
+  console.log("host id is", currentLobby.hostId, "and current user id is", currentFrontendUser._id);
   // Derived state for the UI
   const isHost = currentLobby.hostId === currentFrontendUser._id;
   const isCurrentlyReady = currentLobby.readyStatus[currentFrontendUser._id] || false;
@@ -51,14 +51,13 @@ export default function LobbyRoomPage() {
   }
 };
 
-  const handleLeaveLobby = () => {
-    // Note: You should ideally call a leaveLobby API endpoint here too!
-    clearLobby();
+  const handleLeaveLobby = async () => {
+    await leaveCurrentLobby(currentFrontendUser._id);
     navigate("/");
   };
 
   const handleStartGame = () => {
-    // We will build the Start Game API endpoint next!
+    // TODO start game stuff
     console.log("Starting game...");
   };
 

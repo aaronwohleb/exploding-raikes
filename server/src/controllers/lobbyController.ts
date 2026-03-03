@@ -2,10 +2,11 @@ import { Request, Response } from 'express';
 import { Lobby } from '../types/Lobby';
 import BackendUser from '../types/BackendUser'; // Assuming you have this file
 import { generateLobbyCode } from '../utils/lobbyCode';
+import { LobbyState } from '../types/types';
+import { Server } from 'socket.io';
 
 // --- HELPERS ---
 
-// Re-added the unique checking loop here where it has database access!
 async function generateUniqueLobbyCode(): Promise<string> {
   let code: string;
   let existing: any;
@@ -16,19 +17,31 @@ async function generateUniqueLobbyCode(): Promise<string> {
   return code;
 }
 
-function formatLobbyResponse(lobby: any) {
+function formatLobbyResponse(lobby: any): LobbyState | null{
   if (!lobby) return null;
-  const lobbyObj = lobby.toObject();
-  const readyStatus = lobby.readyStatus || new Map();
+
+  // Convert Mongoose Map to a Record<string, boolean>
+  const readyStatusMap = lobby.readyStatus || new Map();
+  const readyStatus: Record<string, boolean> = Object.fromEntries(readyStatusMap);
+
+  // Map players strictly to the FrontendUser interface
+  const formattedPlayers = lobby.players.map((player: any) => {
+    return {
+      _id: player._id?.toString() || player.toString(),
+      username: player.username || "",
+      email: player.email || ""
+    };
+  });
+
+  
   return {
-    ...lobbyObj,
-    players: lobbyObj.players.map((player: any) => {
-      const playerId = player._id?.toString() || player.toString();
-      if (player.username) {
-        return { ...player, isReady: readyStatus.get(playerId) || false };
-      }
-      return { _id: playerId, isReady: readyStatus.get(playerId) || false };
-    })
+    _id: lobby._id.toString(),
+    code: lobby.code,
+    hostId: (lobby.hostId?._id || lobby.hostId)?.toString(),
+    players: formattedPlayers,
+    readyStatus: readyStatus,
+    maxPlayers: lobby.maxPlayers,
+    status: lobby.status
   };
 }
 
@@ -53,7 +66,8 @@ export const createLobby = async (req: Request, res: Response): Promise<any> => 
     });
 
     await lobby.save();
-    const populatedLobby = await Lobby.findById(lobby._id).populate('hostId', 'username email').populate('players', 'username email');
+
+    const populatedLobby = await Lobby.findById(lobby._id).populate('players', 'username email');
     res.status(201).json(formatLobbyResponse(populatedLobby));
   } catch (error) {
     console.error(error);
@@ -78,7 +92,7 @@ export const joinLobby = async (req: Request, res: Response): Promise<any> => {
     lobby.readyStatus.set(userId, false);
     await lobby.save();
 
-    const populatedLobby = await Lobby.findById(lobby._id).populate('hostId', 'username email').populate('players', 'username email');
+    const populatedLobby = await Lobby.findById(lobby._id).populate('players', 'username email');
     const readyCount = Array.from(lobby.readyStatus.values()).filter(v => v).length;
 
     // Grab the IO instance from the Express app
@@ -99,7 +113,7 @@ export const joinLobby = async (req: Request, res: Response): Promise<any> => {
 
 export const getLobbyDetails = async (req: Request, res: Response): Promise<any> => {
   try {
-    const lobby = await Lobby.findOne({ code: req.params.code.toUpperCase() }).populate('hostId', 'username email').populate('players', 'username email');
+    const lobby = await Lobby.findOne({ code: req.params.code.toUpperCase() });
     if (!lobby) return res.status(404).json({ error: 'Lobby not found' });
     res.json(formatLobbyResponse(lobby));
   } catch (error) {
@@ -130,46 +144,63 @@ export const updateReadyStatus = async (req: Request, res: Response): Promise<an
       readyCount
     });
 
-    const populatedLobby = await Lobby.findById(lobby._id).populate('hostId', 'username email').populate('players', 'username email');
+    const populatedLobby = await Lobby.findById(lobby._id).populate('players', 'username email');
     res.json(formatLobbyResponse(populatedLobby));
   } catch (error) {
     res.status(500).json({ error: 'Failed to update ready status' });
   }
 };
 
+/**
+ * Helper function to process a player leaving, used both for socket disconnects and explicit leave requests.
+ * @param code Lobby code
+ * @param userId 
+ * @param io 
+ * @returns Updated LobbyState
+ */
+export const processPlayerLeave = async (code: string, userId: string, io: Server) => {
+  const lobby = await Lobby.findOne({ code: code.toUpperCase() });
+  if (!lobby) return null;
+
+  lobby.players = lobby.players.filter((id: any) => id.toString() !== userId);
+  lobby.readyStatus.delete(userId);
+
+  if (lobby.players.length === 0) {
+    await Lobby.deleteOne({ _id: lobby._id });
+    return { message: 'Lobby deleted' };
+  }
+
+  let newHostId = lobby.hostId;
+  if (lobby.hostId.toString() === userId && lobby.players.length > 0) {
+    lobby.hostId = lobby.players[0];
+    newHostId = lobby.players[0];
+  }
+  await lobby.save();
+
+  const user = await BackendUser.findById(userId);
+  const readyCount = Array.from(lobby.readyStatus.values()).filter(v => v).length;
+
+  io.to(`lobby:${lobby.code}`).emit('player-left', {
+    userId,
+    username: user?.username,
+    playerCount: lobby.players.length,
+    readyCount,
+    newHostId: newHostId.toString()
+  });
+
+  const populatedLobby = await Lobby.findById(lobby._id).populate('players', 'username email');
+  return formatLobbyResponse(populatedLobby);
+};
+
 export const leaveLobby = async (req: Request, res: Response): Promise<any> => {
   try {
     const { code, userId } = req.params;
-
-    const lobby = await Lobby.findOne({ code: code.toUpperCase() });
-    if (!lobby) return res.status(404).json({ error: 'Lobby not found' });
-
-    lobby.players = lobby.players.filter((id: any) => id.toString() !== userId);
-    lobby.readyStatus.delete(userId);
-
-    if (lobby.players.length === 0) {
-      await Lobby.deleteOne({ _id: lobby._id });
-      return res.json({ message: 'Lobby deleted' });
-    }
-
-    if (lobby.hostId.toString() === userId && lobby.players.length > 0) {
-      lobby.hostId = lobby.players[0];
-    }
-    await lobby.save();
-
-    const user = await BackendUser.findById(userId);
-    const readyCount = Array.from(lobby.readyStatus.values()).filter(v => v).length;
-
-    const io = req.app.get('io');
-    io.to(`lobby:${lobby.code}`).emit('player-left', {
-      userId,
-      username: user?.username,
-      playerCount: lobby.players.length,
-      readyCount
-    });
-
-    const populatedLobby = await Lobby.findById(lobby._id).populate('hostId', 'username email').populate('players', 'username email');
-    res.json(formatLobbyResponse(populatedLobby));
+    const io = req.app.get('io'); // Grab io from Express
+    
+    const result = await processPlayerLeave(code, userId, io);
+    
+    if (!result) return res.status(404).json({ error: 'Lobby not found' });
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: 'Failed to leave lobby' });
   }
