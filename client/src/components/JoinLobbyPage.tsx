@@ -2,10 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useLobby } from '../context/LobbyContext';
 
 export default function JoinLobbyPage() {
   const navigate = useNavigate();
   const { currentFrontendUser } = useAuth();
+  const { joinExistingLobby } = useLobby();
 
   const [lobbyCode, setLobbyCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -13,27 +15,23 @@ export default function JoinLobbyPage() {
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!lobbyCode.trim()) return;
+    const cleanCode = lobbyCode.trim().toUpperCase();
+  
+  if (cleanCode.length !== 6) return setError("Code must be exactly 6 characters.");
+  if (!currentFrontendUser) return setError("You must be logged in to join a lobby.");
 
-    if (lobbyCode.trim().length !== 6) {
-      setError("Code must be exactly 6 characters.");
-      return;
-    }
+  setError(null);
+  setIsLoading(true);
 
-    setError(null);
-    setIsLoading(true);
-
-    try {
-      // TODO: replace with your actual API call
-      // await joinLobby(lobbyCode.trim().toUpperCase());
-      await new Promise((res) => setTimeout(res, 800)); // simulated delay
-      navigate(`/lobby/${lobbyCode.trim().toUpperCase()}`);
-    } catch (err) {
-      setError("Lobby not found. Check your code and try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  try {
+    await joinExistingLobby(cleanCode, currentFrontendUser._id);
+    navigate(`/lobby/${cleanCode}`);
+  } catch (err: any) {
+    setError(err.response?.data?.error || "Lobby not found. Check your code and try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div

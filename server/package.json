@@ -2,9 +2,9 @@
     "name": "exploding-kittens-server",
     "version": "1.0.0",
     "description": "Backend for Exploding Kittens game",
-    "main": "server.ts",
+    "main": "src/server.ts",
     "scripts": {
-        "dev": "ts-node-dev --respawn --transpile-only server.ts",
+        "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
         "start": "tsc && node dist/server.js"
     },
     "dependencies": {
