@@ -5,6 +5,8 @@ import { Server } from 'socket.io';
 
 import{ connectDB } from './config/database';
 import { setupLobbySockets } from './sockets/lobbySockets';
+import { setupGameSockets } from './sockets/gameSockets';
+
 
 // Routes
 import lobbyRoutes from './routes/lobbyRoutes';
@@ -31,6 +33,7 @@ connectDB();
 
 // Initialize WebSockets
 setupLobbySockets(io);
+setupGameSockets(io);
 
 // Health Check with Types
 app.get('/api/health', (req: Request, res: Response) => {
