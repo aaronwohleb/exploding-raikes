@@ -6,9 +6,6 @@ class Player {
     private _hand: Card[];
     private _selectedCards: Card[];
     private _hasNope: boolean;
-
-    private _resolveMove: ((action: PlayerAction) => void) | null = null;
-    private _resolveKittenPlacement: ((index: number) => void) | null = null;
     
     /**
      * Constructs a new Player object with a given name and number - also intializes empty hand and selcted cards arrays.
@@ -24,43 +21,13 @@ class Player {
         this._hasNope = false;
     }
 
-    /**
-     * The Frontend calls this when the user clicks "Play Cards" or "Draw Card"
-     * 
-     * @param action the player's choice to either play some card(s) or to draw
-     */
-    public handleInput(action: PlayerAction): void {
-        if (!this._resolveMove) {
-            console.warn(`It is not ${this._name}'s turn or they aren't ready for input.`);
-            return;
-        }
-
-        const resolve = this._resolveMove;
-        this._resolveMove = null; // Guard against double-resolution
-        resolve(action);
-    }
-
-    /**
-     * The Frontend calls this when the user picks a spot in the deck to replace an Exploding Kitten.
-     * 
-     * @param index the index number for where the Kitten should be placed
-     */
-    public handleKittenPlacement(index: number): void {
-        if (!this._resolveKittenPlacement) {
-            console.warn("It is not time to place the kitten in the deck yet");
-            return;
-        }
-
-        const resolve = this._resolveKittenPlacement;
-        this._resolveKittenPlacement = null; // Guard against double-resolution
-        resolve(index);
-}
-
+    
     /**
      * Controls the flow of a player's turn. This function allows a player to play as many cards as they'd like before ending the turn with a card draw.
      * 
      * @param game the game state before the turn
      */
+    /*
     public async takeTurn(game: Game) {
         let turnActive = true;
 
@@ -73,7 +40,7 @@ class Player {
             switch (action.type) {
                 case 'PLAY':
                     // Update internal state from the JSON payload
-                    this.selectedCards = action.cards /* This is an example, will likely need to select based on passed IDs */;
+                    this.selectedCards = action.cards  This is an example, will likely need to select based on passed IDs ;
                     
                     if (this.checkMove()) {
                         this.playSelectedCards(game);
@@ -95,6 +62,7 @@ class Player {
         console.log(`${this._name}'s turn has officially ended.`);
 
     }
+    */
 
     /**
      * This function draws a card from the DrawDeck and adds it to this player's hand. Handles Exploding Kitten draws as well.
@@ -119,10 +87,8 @@ class Player {
             if (hasDefuse) {
                 let defuse: Card = this.hand.splice(currIndex, 1)[0];
                 game.discardPile.pile.unshift(defuse);
-                // Query front end for player choice
-                const choice = await new Promise<number>((resolve) => {
-                    this._resolveKittenPlacement = resolve;
-                });
+                // TODO: Query FrontEnd for choice
+                let choice: number = 0; // temporary
                 game.drawDeck.replaceExplodingKitten(drawnCard, choice);
             } else {
                 this.lose(game);
