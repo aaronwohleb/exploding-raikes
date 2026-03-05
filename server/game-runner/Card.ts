@@ -1,8 +1,9 @@
 /**
- * Defines a game card and its behavior.
+ * Defines a game card's behavior. Contains a FrontendCard interface as its main card info.
  */
 class Card {
 
+    // In Emma's PR
     private readonly _card: FrontendCard;
 
     /*
@@ -18,10 +19,18 @@ class Card {
      * @param ID the Card's deck ID (i.e. 32)
      * @param name the Card's name (i.e. Bob tells you to pivot)
      */
-    public constructor(type: CardType, ID: number, name: string) {
+    public constructor(ID: number, name: string, type: CardType) {
+        this._card = {
+            id = ID,
+            name = name,
+            tpye = type
+        }
+
+        /*
         this._type = type;
         this._ID = ID;
         this._name = name;
+        */
     }
 
     /**
@@ -87,6 +96,11 @@ class Card {
 
             case CardType.Favor:
                 //TODO: Query Frontend for player selection (both target and card)
+                const receievedCard = target.hand.splice(0, 1)[0]; // temporary
+                game.activePlayer.hand.push(receievedCard);
+                console.log(`${game.activePlayer.name} succesfully asked a favor from ${target.name} and received a ${receievedCard.type.toString}`);
+                break;
+                
             case CardType.Nope:
                 //TODO: Implement before R2
 
@@ -103,7 +117,17 @@ class Card {
             case CardType.Skip:
                 game.numTurns--;
                 if (game.numTurns == 0) {
-                    
+                    try {
+                        game.activePlayer = game.playerList[game.playerList.indexOf(game.activePlayer) + 1];
+                        console.log(`${game.activePlayer} successfully skipped and ended their turn`);
+                    } catch (error: unknown) {
+                        if (error instanceof Error) {
+                            // Index out of bounds error: loop playerList
+                            game.activePlayer = game.playerList[0];
+                        } else {
+                            console.error("Unkown error occured in playCard{Attack}");
+                        }
+                    }
                 }
                 console.log(`${game.activePlayer.name} has skipped a turn`);
                 break;

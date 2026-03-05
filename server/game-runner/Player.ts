@@ -28,6 +28,7 @@ class Player {
      * @param game the game state before the turn
      */
     /*
+    NOTE: Superfluous unless deemed otherwise - commented out just in case
     public async takeTurn(game: Game) {
         let turnActive = true;
 
@@ -70,9 +71,9 @@ class Player {
      * @param game the game state before the draw
      */
     public async drawCard(game: Game) {
-        // TODO: Add undefined checking for shift
+        //TODO: Determine if async or if using websockets
+        //TODO: Add undefined checking for shift
         let drawnCard: Card = game.drawDeck.deck.shift()!;
-        // TODO: Send card JSON to front end for visuals
 
         if (drawnCard.type == CardType.Exploding_Kitten) {
             let hasDefuse: boolean = false;
@@ -87,7 +88,7 @@ class Player {
             if (hasDefuse) {
                 let defuse: Card = this.hand.splice(currIndex, 1)[0];
                 game.discardPile.pile.unshift(defuse);
-                // TODO: Query FrontEnd for choice
+                //TODO: Query FrontEnd for choice
                 let choice: number = 0; // temporary
                 game.drawDeck.replaceExplodingKitten(drawnCard, choice);
             } else {
@@ -133,7 +134,7 @@ class Player {
                 for (let card of this.selectedCards) {
                     typeMap.set(card.type, 0);
                 }
-                return typeMap.size === 5;
+                return typeMap.size == 5;
         }
         return false;
     }
@@ -146,11 +147,12 @@ class Player {
     public playSelectedCards(game: Game) {
         switch (this.selectedCards.length) {
             case 1:
+                //TODO: Query frontend for target if favor (Maybe targeted attack later)
                 this.selectedCards[0].playCard(game, this);
                 break;
 
             case 2:
-                // TODO: Do two-card combo
+                //TODO: Do two-card combo
                 for (let card of this.selectedCards) {
                     this.hand = this.hand.filter(currCard => currCard !== card);
                     game.discardPile.pile.unshift(card);
@@ -158,7 +160,7 @@ class Player {
                 break;
 
             case 3: 
-                // TODO: Do three-card combo
+                //TODO: Do three-card combo
                 for (let card of this.selectedCards) {
                     this.hand = this.hand.filter(currCard => currCard !== card);
                     game.discardPile.pile.unshift(card);
@@ -166,7 +168,7 @@ class Player {
                 break;
 
             case 5:
-                // TODO: Do five-card combo (Later)
+                //TODO: Do five-card combo (Later)
                 for (let card of this.selectedCards) {
                     this.hand = this.hand.filter(currCard => currCard !== card);
                     game.discardPile.pile.unshift(card);
@@ -275,37 +277,4 @@ class Player {
     public set hasNope(value: boolean) {
         this._hasNope = value;
     }
-
-    /**
-     * 
-     */
-    public get resolveMove(): ((action: PlayerAction) => void) | null {
-        return this._resolveMove;
-    }
-
-    /**
-     * 
-     */
-    public set resolveMove(value: ((action: PlayerAction) => void) | null) {
-        this._resolveMove = value;
-    }
-
-    /**
-     * 
-     */
-    public get resolveKittenPlacement(): ((index: number) => void) | null {
-        return this._resolveKittenPlacement;
-    }
-
-    /**
-     * 
-     */
-    public set resolveKittenPlacement(value: ((index: number) => void) | null) {
-        this._resolveKittenPlacement = value;
-    }
 }
-
-/**
-* Define a simple type for the communication
-*/
-type PlayerAction = { type: 'PLAY'; cards: Card[]} | { type: 'DRAW' };

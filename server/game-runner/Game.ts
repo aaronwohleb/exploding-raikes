@@ -29,10 +29,14 @@ class Game {
      * 
      * @returns the winner of the game
      */
+
+    /*
+    NOTE: Superfluous unless deemed otherwise - commented out just in case
     public playGame(): Player {
         // Play game
         return this.playerList[0];
     }
+        */
 
     /**
      * Helper function to deal a starting hand to each player. A starting hand should have 7 non-defuse, non-exploding kitten cards, and 1 defuse.
