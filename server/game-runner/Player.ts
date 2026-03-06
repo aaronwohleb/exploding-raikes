@@ -1,4 +1,10 @@
-class Player {
+import { Card, CardType } from '../../client/src/types/types';
+import { Game } from './Game';
+
+/**
+ * This class represents a player and their actions.
+ */
+export class Player {
 
     private readonly _name: string;
     private readonly _playerNum: number;
@@ -21,57 +27,14 @@ class Player {
         this._hasNope = false;
     }
 
-    
-    /**
-     * Controls the flow of a player's turn. This function allows a player to play as many cards as they'd like before ending the turn with a card draw.
-     * 
-     * @param game the game state before the turn
-     */
-    /*
-    NOTE: Superfluous unless deemed otherwise - commented out just in case
-    public async takeTurn(game: Game) {
-        let turnActive = true;
-
-        while (turnActive) {
-            // Wait for the frontend to signal an action
-            const action = await new Promise<PlayerAction>((resolve) => {
-                this._resolveMove = resolve;
-            });
-
-            switch (action.type) {
-                case 'PLAY':
-                    // Update internal state from the JSON payload
-                    this.selectedCards = action.cards  This is an example, will likely need to select based on passed IDs ;
-                    
-                    if (this.checkMove()) {
-                        this.playSelectedCards(game);
-                        console.log("Move successful");
-                    } else {
-                        console.log("Invalid move");
-                        this.selectedCards = [];
-                    }
-                    // Loop continues: Player can play more cards
-                    break;
-
-                case 'DRAW':
-                    this.drawCard(game); 
-                    turnActive = false; // This breaks the loop and ends takeTurn()
-                    break;
-            }
-        }
-    
-        console.log(`${this._name}'s turn has officially ended.`);
-
-    }
-    */
-
     /**
      * This function draws a card from the DrawDeck and adds it to this player's hand. Handles Exploding Kitten draws as well.
      * 
      * @param game the game state before the draw
      */
-    public async drawCard(game: Game) {
+    public drawCard(game: Game): Card {
         //TODO: Determine if async or if using websockets
+        //NOTE: Cannot return Card if async
         //TODO: Add undefined checking for shift
         let drawnCard: Card = game.drawDeck.deck.shift()!;
 
@@ -101,6 +64,8 @@ class Player {
             }
             this.hand.push(drawnCard);
         }
+
+        return drawnCard;
     }
 
     /**
@@ -140,7 +105,7 @@ class Player {
     }
 
     /**
-     * Handles logic for multi-card combos. Designed to hand off card functionality to Card class for single-card plays.
+     * Handles logic for multi-card combos. Designed to hand off card functionality to playCard() for single-card plays.
      * 
      * @param game the game state
      */
@@ -148,7 +113,8 @@ class Player {
         switch (this.selectedCards.length) {
             case 1:
                 //TODO: Query frontend for target if favor (Maybe targeted attack later)
-                this.selectedCards[0].playCard(game, this);
+                let target: Player = this /* target of card, if applicable */;
+                this.playCard(game, this);
                 break;
 
             case 2:
@@ -188,7 +154,8 @@ class Player {
     public playCard(game: Game, target: Player): Card[] {
         // play card with a target
         let returnCards: Card[] = [];
-        switch (this._card.type) {
+        let playedCard = this.selectedCards.splice(0, 1)[0];
+        switch (playedCard.type) {
             case CardType.Attack: 
                 // NOTE: game.numTurns MUST be 0 before a player's chance to play/draw ends
                 if (game.numTurns > 1) {
@@ -198,12 +165,15 @@ class Player {
                 } else {
                     game.numTurns = 2 /* + stored attacks */
                     try {
+                        let currPlayer: Player = game.activePlayer
                         game.activePlayer = game.playerList[game.playerList.indexOf(game.activePlayer) + 1];
-                        console.log(`${game.activePlayer} successfully attacked and ended their turn`);
+                        console.log(`${currPlayer} successfully attacked and ended their turn`);
                     } catch (error: unknown) {
                         if (error instanceof Error) {
                             // Index out of bounds error: loop playerList
+                            let currPlayer: Player = game.activePlayer
                             game.activePlayer = game.playerList[0];
+                            console.log(`${currPlayer} successfully attacked and ended their turn`);
                         } else {
                             console.error("Unkown error occured in playCard{Attack}");
                         }
@@ -263,12 +233,15 @@ class Player {
                 game.numTurns--;
                 if (game.numTurns == 0) {
                     try {
+                        let currPlayer: Player = game.activePlayer
                         game.activePlayer = game.playerList[game.playerList.indexOf(game.activePlayer) + 1];
-                        console.log(`${game.activePlayer} successfully skipped and ended their turn`);
+                        console.log(`${currPlayer} successfully skipped and ended their turn`);
                     } catch (error: unknown) {
                         if (error instanceof Error) {
                             // Index out of bounds error: loop playerList
+                            let currPlayer: Player = game.activePlayer
                             game.activePlayer = game.playerList[0];
+                            console.log(`${currPlayer} successfully skipped and ended their turn`);
                         } else {
                             console.error("Unkown error occured in playCard{Attack}");
                         }
@@ -278,6 +251,7 @@ class Player {
                 break;
 
         }
+        this.hand.filter(card => card !== playedCard);
         return returnCards;
     }
     

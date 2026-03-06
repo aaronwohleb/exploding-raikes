@@ -1,7 +1,11 @@
+import { Player } from './Player';
+import { DrawDeck } from './DrawDeck';
+import { DiscardPile } from './DiscardPile';
+
 /**
  * Responsible for holding the game state and running the game.
  */
-class Game {
+export class Game {
 
     private _playerList: Player[];
     private _drawDeck: DrawDeck;
@@ -23,20 +27,6 @@ class Game {
 
         this.dealCards();
     }
-
-    /**
-     * Controls the flow of the game - turn order, game state, victory, etc.
-     * 
-     * @returns the winner of the game
-     */
-
-    /*
-    NOTE: Superfluous unless deemed otherwise - commented out just in case
-    public playGame(): Player {
-        // Play game
-        return this.playerList[0];
-    }
-        */
 
     /**
      * Helper function to deal a starting hand to each player. A starting hand should have 7 non-defuse, non-exploding kitten cards, and 1 defuse.
@@ -135,3 +125,4 @@ class Game {
         this._numTurns = value;
     }
 }
+

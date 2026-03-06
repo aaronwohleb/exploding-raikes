@@ -1,7 +1,10 @@
+import { Card } from '../../client/src/types/types';
+import { Player } from './Player';
+
 /**
  * Represents a deck of Exploding Kittens cards with the functionality of the game's discard pile.
  */
-class DiscardPile {
+export class DiscardPile {
 
     private _pile: Card[];
 
