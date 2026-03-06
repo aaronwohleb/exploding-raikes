@@ -179,6 +179,109 @@ class Player {
     }
 
     /**
+     * This function applies the Card's effects to the game.
+     * 
+     * @param game the game being played on which to apply the Card's effects
+     * @param target the target of the Card's effects NOTE: for no target, the target is the current player
+     * @returns an action code, which will affect the state of the game after the function executes
+     */
+    public playCard(game: Game, target: Player): Card[] {
+        // play card with a target
+        let returnCards: Card[] = [];
+        switch (this._card.type) {
+            case CardType.Attack: 
+                // NOTE: game.numTurns MUST be 0 before a player's chance to play/draw ends
+                if (game.numTurns > 1) {
+                    // TODO: store attack turns statically so that they can be added after consecutive turns
+                    game.numTurns--;
+                    console.log(`${game.activePlayer} just attacked, but they still have more turns. Successfully stored attack info`);
+                } else {
+                    game.numTurns = 2 /* + stored attacks */
+                    try {
+                        game.activePlayer = game.playerList[game.playerList.indexOf(game.activePlayer) + 1];
+                        console.log(`${game.activePlayer} successfully attacked and ended their turn`);
+                    } catch (error: unknown) {
+                        if (error instanceof Error) {
+                            // Index out of bounds error: loop playerList
+                            game.activePlayer = game.playerList[0];
+                        } else {
+                            console.error("Unkown error occured in playCard{Attack}");
+                        }
+                    }
+                }
+                break;  
+                
+            case CardType.Beard_Cat:
+                console.warn("You cannot play CardType.Beard_Cat alone");
+                break;
+
+            case CardType.Catermelon:
+                console.warn("You cannot play CardType.Catermelon alone");
+                break;
+
+            case CardType.Hairy_Potato_Cat:
+                console.warn("You cannot play CardType.Hairy_Potato_Cat alone");
+                break;
+
+            case CardType.Rainbow_Ralphing_Cat:
+                console.warn("You cannot play CardType.Rainbow_Ralphing_Cat alone");
+                break;
+
+            case CardType.Tacocat:
+                console.warn("You cannot play CardType.Tacocat alone");
+                break;
+
+            case CardType.Defuse:
+                console.warn("You cannot play CardType.Defuse alone");
+                break;
+
+            case CardType.Exploding_Kitten:
+                console.warn("You cannot play CardType.Exploding_Kitten");
+                break;
+
+            case CardType.Favor:
+                //TODO: Query Frontend for player selection (both target and card)
+                const receievedCard = target.hand.splice(0, 1)[0]; // temporary
+                game.activePlayer.hand.push(receievedCard);
+                console.log(`${game.activePlayer.name} succesfully asked a favor from ${target.name} and received a ${receievedCard.type.toString}`);
+                break;
+                
+            case CardType.Nope:
+                //TODO: Implement before R2
+
+            case CardType.See_the_Future:
+                returnCards = game.drawDeck.seeFuture(3);
+                console.log(`${game.activePlayer.name} just saw the future (x3)`);
+                break;
+
+            case CardType.Shuffle:
+                game.drawDeck.shuffleDeck();
+                console.log("Shuffled draw deck");
+                break;
+
+            case CardType.Skip:
+                game.numTurns--;
+                if (game.numTurns == 0) {
+                    try {
+                        game.activePlayer = game.playerList[game.playerList.indexOf(game.activePlayer) + 1];
+                        console.log(`${game.activePlayer} successfully skipped and ended their turn`);
+                    } catch (error: unknown) {
+                        if (error instanceof Error) {
+                            // Index out of bounds error: loop playerList
+                            game.activePlayer = game.playerList[0];
+                        } else {
+                            console.error("Unkown error occured in playCard{Attack}");
+                        }
+                    }
+                }
+                console.log(`${game.activePlayer.name} has skipped a turn`);
+                break;
+
+        }
+        return returnCards;
+    }
+    
+    /**
      * Controls a player's hand and the game's playerList after a player explodes.
      * 
      * @param game the game state
