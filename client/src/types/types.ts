@@ -35,9 +35,8 @@ export interface LobbyState {
 }
 
 /**
- * Mirror of the server-side CardType enum in card.ts.
+ * Represents a Card's possible types.
  * Uses string values so they survive being sent over the socket as JSON.
- * Keep in sync with the server.
  */
 export enum CardType {
   Attack = 'Attack',
@@ -55,15 +54,11 @@ export enum CardType {
   Skip = 'Skip',
 }
 
-export interface FrontendCard {
+/**
+ * Fullstack representation of a Card, used for communication between frontend and backend.
+ */
+export interface Card {
   id: number;
   name: string;
    type: CardType;
-}
-
-export interface PlayedCard {
-  id: string;
-  type: CardType;
-  // All cards involved in this play
-  cards: FrontendCard[];
 }

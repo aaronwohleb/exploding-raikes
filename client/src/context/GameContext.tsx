@@ -1,19 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useGameSocket } from './SocketContext';
-import { FrontendCard, PlayedCard, GameState } from '../types/types';
+import { Card, GameState } from '../types/types';
 
 /**
  * Describes the shape of the GameContext value available to any component inside GameProvider.
  */
 interface GameContextType {
-  myHand: FrontendCard[];
-  lastPlayedCard: PlayedCard | null;
+  myHand: Card[];
+  lastPlayedCard: Card | null;
   // Only populated after playing See the Future.
-  seeTheFutureCards: FrontendCard[];
+  seeTheFutureCards: Card[];
   // Emits a draw_card event to the server.
   drawCard: (roomId: string) => void;
   // Emits a play_card event to the server with the selected cards.
-  playCard: (roomId: string, cards: FrontendCard[]) => void;
+  playCard: (roomId: string, cards: number[], targetPlayerId?: string) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -27,9 +27,9 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 export function GameProvider({ children }: { children: ReactNode }) {
   const { socket } = useGameSocket();
 
-  const [myHand, setMyHand] = useState<FrontendCard[]>([]);
-  const [lastPlayedCard, setLastPlayedCard] = useState<PlayedCard | null>(null);
-  const [seeTheFutureCards, setSeeTheFutureCards] = useState<FrontendCard[]>([]);
+  const [myHand, setMyHand] = useState<Card[]>([]);
+  const [lastPlayedCard, setLastPlayedCard] = useState<Card | null>(null);
+  const [seeTheFutureCards, setSeeTheFutureCards] = useState<Card[]>([]);
 
   // listeners
 
@@ -40,9 +40,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
      * Fired by the server to send THIS player their current hand.
      * Only sent to the player who drew — not to everyone.
      */
-    const handleReceiveCard = (hand: FrontendCard[]) => {
-      console.log('receive_card (full hand):', hand);
-      setMyHand(hand);
+    const handleUpdateHand = (data: { fullHand: Card[], justDrawnCard: Card | null }) => {
+      console.log('drawn_card :', data.justDrawnCard);
+      console.log('full hand:', data.fullHand);
+      setMyHand(data.fullHand);
+      // TODO: trigger animation for justDrawnCard if not null
     };
 
     /**
@@ -58,31 +60,31 @@ export function GameProvider({ children }: { children: ReactNode }) {
      * Broadcast to ALL players when any player plays a card.
      * Contains the card type and all cards involved so every player can see what was played.
      */
-    const handlePlayerPlaysCard = (playedCard: PlayedCard) => {
-      console.log('player_plays_card:', playedCard);
-      setLastPlayedCard(playedCard);
+    const handlePlayerPlaysCards = (data: {playedCards: Card[], playerId: string }) => {
+      console.log('player' + data.playerId + '_plays_cards:', data.playedCards);
+      setLastPlayedCard(data.playedCards[data.playedCards.length - 1]);
     };
 
     /**
      * Fired ONLY to the player who played a See the Future card.
      * Contains the top 3 cards of the draw deck in order.
      */
-    const handleSeeTheFuture = (topCards: FrontendCard[]) => {
+    const handleSeeTheFuture = (topCards: Card[]) => {
       console.log('see_the_future — top 3 cards:', topCards);
       setSeeTheFutureCards(topCards);
     };
 
     // Turn the listeners on
-    socket.on('receive_card', handleReceiveCard);
+    socket.on('update_hand', handleUpdateHand);
     socket.on('player_draws_card', handlePlayerDrawsCard);
-    socket.on('player_plays_card', handlePlayerPlaysCard);
+    socket.on('player_plays_cards', handlePlayerPlaysCards);
     socket.on('see_the_future', handleSeeTheFuture);
 
     // Turn the listeners off
     return () => {
-      socket.off('receive_card', handleReceiveCard);
+      socket.off('update_hand', handleUpdateHand);
       socket.off('player_draws_card', handlePlayerDrawsCard);
-      socket.off('player_plays_card', handlePlayerPlaysCard);
+      socket.off('player_plays_cards', handlePlayerPlaysCards);
       socket.off('see_the_future', handleSeeTheFuture);
     };
   }, [socket]);
@@ -109,9 +111,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
    * @param roomId - The ID of the room/game the player is in.
    * @param cards - The cards the player wants to play from their hand.
    */
- const playCard = (roomId: string, cardIds: number[]) => {
+ const playCard = (roomId: string, cardIds: number[], targetPlayerId?: string) => {
     if (!socket) return;
-    socket.emit('play_card', { roomId, cardIds });
+    socket.emit('play_card', { roomId, cardIds, targetPlayerId });
   };
 
   return (

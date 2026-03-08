@@ -1,7 +1,10 @@
+import { Player } from './Player';
+import { DiscardPile } from './DiscardPile';
+import { DrawDeck } from './DrawDeck';
 /**
  * Responsible for holding the game state and running the game.
  */
-class Game {
+export class Game {
 
     private _playerList: Player[];
     private _drawDeck: DrawDeck;

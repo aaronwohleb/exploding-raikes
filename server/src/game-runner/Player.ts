@@ -1,4 +1,6 @@
-class Player {
+import { Card, CardType } from '../types/types';
+import { Game } from './Game';
+export class Player {
 
     private readonly _name: string;
     private readonly _playerNum: number;
@@ -33,8 +35,18 @@ class Player {
      * 
      * @param game the game state before the draw
      */
-    public drawCard(game: Game) {
+    public drawCard(game: Game): Card|undefined {
         // Draw a card
+        return undefined;
+    }
+
+    /**
+     * 
+     * @param game the game state
+     * @param cards the cards the player wants to play
+     * @param target option target player for cards like Targeted Attack or Favor
+     */
+    public playCards(game: Game, cardIds: number[], target?: Player) {
     }
 
     /**
@@ -99,21 +111,6 @@ class Player {
         this._hand = value;
     }
 
-    /**
-     * Gets the Player's selectedCards.
-     * 
-     * @return the Player's selectedCards
-     */
-    public get selectedCards(): Card[] {
-        return this._selectedCards;
-    }
 
-    /**
-     * Sets the Player's selectedCards.
-     * 
-     * @param value the Player's selectedCards
-     */
-    public set selectedCards(value: Card[]) {
-        this._selectedCards = value;
-    }
+
 }
