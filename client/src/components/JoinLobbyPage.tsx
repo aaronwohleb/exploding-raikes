@@ -2,10 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useLobby } from '../context/LobbyContext';
 
 export default function JoinLobbyPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { currentFrontendUser } = useAuth();
+  const { joinExistingLobby } = useLobby();
 
   const [lobbyCode, setLobbyCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -13,27 +15,23 @@ export default function JoinLobbyPage() {
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!lobbyCode.trim()) return;
+    const cleanCode = lobbyCode.trim().toUpperCase();
+  
+  if (cleanCode.length !== 6) return setError("Code must be exactly 6 characters.");
+  if (!currentFrontendUser) return setError("You must be logged in to join a lobby.");
 
-    if (lobbyCode.trim().length !== 6) {
-      setError("Code must be exactly 6 characters.");
-      return;
-    }
+  setError(null);
+  setIsLoading(true);
 
-    setError(null);
-    setIsLoading(true);
-
-    try {
-      // TODO: replace with your actual API call
-      // await joinLobby(lobbyCode.trim().toUpperCase());
-      await new Promise((res) => setTimeout(res, 800)); // simulated delay
-      navigate(`/lobby/${lobbyCode.trim().toUpperCase()}`);
-    } catch (err) {
-      setError("Lobby not found. Check your code and try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  try {
+    await joinExistingLobby(cleanCode, currentFrontendUser._id);
+    navigate(`/lobby/${cleanCode}`);
+  } catch (err: any) {
+    setError(err.response?.data?.error || "Lobby not found. Check your code and try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div
@@ -91,14 +89,14 @@ export default function JoinLobbyPage() {
           animate={{ x: 0, opacity: 1 }}
           className="w-1/3 flex justify-end"
         >
-          {user && (
+          {currentFrontendUser && (
             <button
               onClick={() => navigate("/profile")}
               className="flex items-center gap-3 p-2 group"
             >
               <div className="text-right">
                 <p className="text-xl font-medium text-gray-900 group-hover:text-[#B81C27] transition-colors">
-                  {user.username}
+                  {currentFrontendUser.username}
                 </p>
               </div>
               <div className="w-12 h-12 bg-[#B81C27] rounded-xl flex items-center justify-center text-white shadow-sm group-hover:bg-[#C81C27] transition-colors">

@@ -14,12 +14,12 @@ const SocketContext = createContext<SocketContextType | undefined>(undefined);
 export function SocketProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const { user } = useAuth(); // We need the user to authenticate the socket
+  const { currentFrontendUser } = useAuth(); // We need the user to authenticate the socket
 
   useEffect(() => {
     // Initialize Socket if user is logged in by pulling user's JWT
     const token = localStorage.getItem('token');
-    if (user && token && !socket) {
+    if (currentFrontendUser && token && !socket) {
       const newSocket = io('http://localhost:3001', {
         autoConnect: true,
         auth: { token }, 
@@ -48,11 +48,14 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         setSocket(null);
       };
     }
-  }, [user]);
+  }, [currentFrontendUser]);
 
   const joinRoom = (roomId: string) => {
-    if (socket && isConnected) {
-      socket.emit('join_room', roomId);
+    if (socket && isConnected && currentFrontendUser) {
+      socket.emit('join_room', {
+        roomId,
+        userId: currentFrontendUser._id
+      });
     }
   };
 

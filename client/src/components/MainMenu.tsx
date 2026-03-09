@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function MainMenu() {
   const navigate = useNavigate();
-  const { user, login, register, logout } = useAuth();
+  const { currentFrontendUser, login, register, logout } = useAuth();
 
   // Local UI State
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -61,7 +61,7 @@ export default function MainMenu() {
           animate={{ x: 0, opacity: 1 }}
           className="w-1/3 flex justify-end"
         >
-          {user ? (
+          {currentFrontendUser ? (
             <div className="flex flex-col items-end gap-1">
               {/* Profile Link: Clicking the name or image takes you to /profile */}
               <motion.button
@@ -72,7 +72,7 @@ export default function MainMenu() {
               >
                 <div className="text-right">
                   <p className="text-xl font-medium text-gray-900 group-hover:text-[#B81C27] transition-colors">
-                    {user.username}
+                    {currentFrontendUser.username}
                   </p>
                 </div>
 
@@ -139,13 +139,13 @@ export default function MainMenu() {
           {" "}
           {/* User has to be logged in to join/create a game */}
           <MenuButton
-            onClick={() => (user ? navigate("/join") : setShowAuthModal(true))}
+            onClick={() => (currentFrontendUser ? navigate("/join") : setShowAuthModal(true))}
           >
             Join Lobby
           </MenuButton>
           <MenuButton
             onClick={() =>
-              user ? navigate("/create") : setShowAuthModal(true)
+              currentFrontendUser ? navigate("/create") : setShowAuthModal(true)
             }
           >
             Create Lobby

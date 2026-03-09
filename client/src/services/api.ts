@@ -1,7 +1,7 @@
 import axios from 'axios';
-import { User, AuthResponse } from '../types/types';
+import { AuthResponse, LobbyState } from '../types/types';
 
-// Decided to use axios, can change if you want to
+// Axios instance configured to point at the local backend
 const apiClient = axios.create({
   baseURL: 'http://localhost:3001/api', // Backend URL
   headers: {
@@ -9,43 +9,88 @@ const apiClient = axios.create({
   },
 });
 
-// --- AUTH SERVICES ---
 
-export const loginUser = async (email: string, password: string): Promise<User> => {
-  // TODO: Verify and login a user (maybe idk)
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token && config.headers) {
+    // Attach the JWT token to the Authorization header
+    config.headers.Authorization = `Bearer ${token}`; 
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
 
-  // TEMPORARY MOCK LOGIN (Remove when backend is ready)
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        _id: 'mock_user_id',
-        username: 'bossman67',
-        email: email,
-      });
-    }, 500);
+// AUTH SERVICES
+
+/**
+ * Sends login credentials to the backend and returns 
+ * the authenticated frontend user
+ * @param email 
+ * @param password 
+ * @returns authenticated frontend user object and JWT token
+ */
+export const loginUser = async (email: string, password: string): Promise<AuthResponse> => {
+
+  const response = await apiClient.post<AuthResponse>("/login", {
+    email,
+    password
   });
+
+  return response.data;
 };
 
-export const registerUser = async (username: string, email: string, password: string): Promise<User> => {
-  // TODO: Verify and create a user.
-
-
-  // TEMPORARY MOCK AUTOLOGIN
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        _id: 'mock_' + Date.now(),
-        username,
-        email,
-      });
-    }, 500);
+/**
+ * Sends registration details to the backend and 
+ * returns the newly created frontend user
+ * @param username 
+ * @param email 
+ * @param password 
+ * @returns frontend user
+ */
+export const registerUser = async (username: string, email: string, password: string): Promise<AuthResponse> => {
+  const response = await apiClient.post<AuthResponse>("/register", {
+    username,
+    email,
+    password
   });
+
+  return response.data;  
+};
+ // GAME SERVICES
+
+/**
+ * Tells the backend to create a new lobby and returns the generated code.
+ */
+export const createLobby = async (userId: string, maxPlayers: number = 8): Promise<LobbyState> => {
+  const response = await apiClient.post("/lobbies", {
+    userId,
+    maxPlayers
+  });
+  console.log("RAW CREATE DATA FROM BACKEND:", response.data);
+  // Pull the lobby code out of the response
+  return response.data; 
 };
 
-// --- GAME SERVICES ---
+/**
+ * Attempts to join an existing lobby by code.
+ */
+export const joinLobby = async (code: string, userId: string): Promise<LobbyState> => {
+  const response = await apiClient.post("/lobbies/join", {
+    code,
+    userId
+  });
+  
+  return response.data;
+};
 
-export const createLobby = async (userId: string): Promise<string> => {
-  // Should prolly return the new Room ID
-  // Should prolly post the new generated code and check for existing lobby code
-  return 'XY99'; // Mock Room Code
+export const updateReadyStatus = async (code: string, userId: string, isReady: boolean): Promise<LobbyState> => {
+  const response = await apiClient.patch<LobbyState>(`/lobbies/${code}/players/${userId}/ready`, {
+    isReady
+  });
+  return response.data;
+};
+
+export const leaveLobby = async (code: string, userId: string): Promise<void> => {
+  await apiClient.delete(`/lobbies/${code}/players/${userId}`);
 };
