@@ -1,6 +1,7 @@
 import { Player } from './Player';
-import { DiscardPile } from './DiscardPile';
 import { DrawDeck } from './DrawDeck';
+import { DiscardPile } from './DiscardPile';
+
 /**
  * Responsible for holding the game state and running the game.
  */
@@ -25,16 +26,6 @@ export class Game {
         this._numTurns = 1;
 
         this.dealCards();
-    }
-
-    /**
-     * Controls the flow of the game - turn order, game state, victory, etc.
-     * 
-     * @returns the winner of the game
-     */
-    public playGame(): Player {
-        // Play game
-        return this.playerList[0];
     }
 
     /**
@@ -134,3 +125,4 @@ export class Game {
         this._numTurns = value;
     }
 }
+

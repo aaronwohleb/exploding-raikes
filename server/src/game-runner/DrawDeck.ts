@@ -1,4 +1,5 @@
 import { Card, CardType } from '../types/types';
+
 /**
  * Represents a deck of Exploding Kittens cards with the functionality of the game's draw pile.
  */
@@ -11,45 +12,31 @@ export class DrawDeck {
      */
     public constructor() {
         this._deck = [];
-        // Make full deck of cards
-        for (let i: number = 0; i < 4; i++) {
-            this._deck.push({ type: CardType.Attack, id: i, name: "Generic" });
-        }
-        for (let i: number = 4; i < 8; i++) {
-            this._deck.push({ type: CardType.Beard_Cat, id: i, name: "Generic" });
-        }
-        for (let i: number = 8; i < 12; i++) {
-            this._deck.push({ type: CardType.Catermelon, id: i, name: "Generic" });
-        }
-        for (let i: number = 12; i < 16; i++) {
-            this._deck.push({ type: CardType.Hairy_Potato_Cat, id: i, name: "Generic" });
-        }
-        for (let i: number = 16; i < 20; i++) {
-            this._deck.push({ type: CardType.Rainbow_Ralphing_Cat, id: i, name: "Generic" });
-        }
-        for (let i: number = 20; i < 24; i++) {
-            this._deck.push({ type: CardType.Tacocat, id: i, name: "Generic" });
-        }
-        for (let i: number = 24; i < 30; i++) {
-            this._deck.push({ type: CardType.Defuse, id: i, name: "Generic" });
-        }
-        for (let i: number = 30; i < 34; i++) {
-            this._deck.push({ type: CardType.Exploding_Kitten, id: i, name: "Generic" });
-        }
-        for (let i: number = 34; i < 38; i++) {
-            this._deck.push({ type: CardType.Favor, id: i, name: "Generic" });
-        }
-        for (let i: number = 38; i < 43; i++) {
-            this._deck.push({ type: CardType.Nope, id: i, name: "Generic" });
-        }
-        for (let i: number = 43; i < 48; i++) {
-            this._deck.push({ type: CardType.See_the_Future, id: i, name: "Generic" });
-        }
-        for (let i: number = 48; i < 52; i++) {
-            this._deck.push({ type: CardType.Shuffle, id: i, name: "Generic" });
-        }
-        for (let i: number = 52; i < 56; i++) {
-            this._deck.push({ type: CardType.Skip, id: i, name: "Generic" });
+        // Make full deck of cards (Hard coded and subject to change)
+        const cardConfigs = [
+            { type: CardType.Attack, count: 4 },
+            { type: CardType.Beard_Cat, count: 4 },
+            { type: CardType.Catermelon, count: 4 },
+            { type: CardType.Hairy_Potato_Cat, count: 4 },
+            { type: CardType.Rainbow_Ralphing_Cat, count: 4 },
+            { type: CardType.Tacocat, count: 4 },
+            { type: CardType.Defuse, count: 6 },
+            { type: CardType.Exploding_Kitten, count: 4 },
+            { type: CardType.Favor, count: 4 },
+            { type: CardType.Nope, count: 5 },
+            { type: CardType.See_the_Future, count: 5 },
+            { type: CardType.Shuffle, count: 4 },
+        ];
+
+        let currentId = 0;
+        for (const config of cardConfigs) {
+            for (let i = 0; i < config.count; i++) {
+                this.deck.push({
+                    type: config.type,
+                    id: currentId++,
+                    name: "Generic"
+                });
+            }
         }
     }
 
@@ -60,7 +47,17 @@ export class DrawDeck {
      * @param index the spot in the deck to replace it
      */
     public replaceExplodingKitten(kitten: Card, index: number) {
-        // Insert Kitten into deck
+        try {
+            this.deck.splice(index, 0, kitten);
+        } catch (error) {
+            // If invalid deck position, assign to nearest available position
+            if (index < 0) {
+                this.deck.unshift(kitten);
+            } else {
+                this.deck.push(kitten);
+            }
+        }
+        
     }
 
     /**
@@ -70,6 +67,9 @@ export class DrawDeck {
      * @returns the array of cards to show
      */
     public seeFuture(numCards: number): Card[] {
+        if (numCards > this.deck.length) {
+            return this.deck.slice(0, this.deck.length);
+        }
         return this.deck.slice(0, numCards);
     }
 
@@ -77,7 +77,16 @@ export class DrawDeck {
      * This function shuffles the deck of cards.
      */
     public shuffleDeck() {
-        // Shuffle the deck
+        let currentIndex: number = this.deck.length;
+        let randIndex: number = -1;
+
+        while (currentIndex !== 0) {
+            // Pick a random remaining element.
+            randIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            // Swap it with the current element
+            [this.deck[currentIndex], this.deck[randIndex]] = [this.deck[randIndex], this.deck[currentIndex]];
+        }
     }
 
     /**

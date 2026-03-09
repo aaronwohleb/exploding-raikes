@@ -1,5 +1,6 @@
-import { Card, CardType } from '../types/types';
+import { Card } from '../types/types';
 import { Player } from './Player';
+
 /**
  * Represents a deck of Exploding Kittens cards with the functionality of the game's discard pile.
  */
@@ -19,8 +20,9 @@ export class DiscardPile {
      * 
      * @param player the player that will draw the card
      */
-    public drawFromDiscard(player: Player) {
-        // draw card of choice from DCP
+    public drawFromDiscard(player: Player, index: number) {
+        let cardChoice: Card = this.pile.splice(index, 1)[0];
+        player.hand.push(cardChoice);
     }
 
     /**
