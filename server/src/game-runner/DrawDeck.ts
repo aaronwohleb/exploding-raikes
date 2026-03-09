@@ -1,4 +1,4 @@
-import { Card, CardType } from '../../client/src/types/types';
+import { Card, CardType } from '../types/types';
 
 /**
  * Represents a deck of Exploding Kittens cards with the functionality of the game's draw pile.

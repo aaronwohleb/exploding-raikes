@@ -1,4 +1,4 @@
-import { Card } from '../../client/src/types/types';
+import { Card } from '../types/types';
 import { Player } from './Player';
 
 /**

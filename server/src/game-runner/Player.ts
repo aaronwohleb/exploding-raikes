@@ -1,4 +1,4 @@
-import { Card, CardType } from '../../client/src/types/types';
+import { Card, CardType } from '../types/types';
 import { Game } from './Game';
 
 /**
