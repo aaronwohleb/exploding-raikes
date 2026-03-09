@@ -81,8 +81,7 @@ export function setupGameSockets(io: Server) {
       
       const playedCards = player.hand.filter(card => cardIds.includes(card.id));
 
-      player.playCards(game, cardIds);
-      
+      const { stolenCard, futureCards } = player.playCards(game, cardIds);
 
       // Broadcast to everyone in the room what was played
       io.to(`game:${roomId}`).emit('player_plays_cards', {
@@ -90,14 +89,12 @@ export function setupGameSockets(io: Server) {
         playerId: socket.data.userId
       });
 
-      // Send this player's full updated hand to prevent desync, along with null for justDrawnCard since this is a play, not a draw
-      socket.emit('update_hand', { fullHand: player.hand, justDrawnCard: null });
+      // Send this player's full updated hand to prevent desync, along with the stolen card for animation purposes
+      socket.emit('update_hand', { fullHand: player.hand, stolenCard });
 
       // If See the Future was played, send the top 3 cards only to this player
-      const playedSeeTheFuture = playedCards.some(card => card.type === 'See_the_Future');
-      if (playedSeeTheFuture) {
-        const topThree = game.drawDeck.seeFuture(3); 
-        socket.emit('see_the_future', topThree);
+      if (futureCards) {
+        socket.emit('see_the_future', futureCards);
       }
 
       console.log(`play_card: player ${socket.data.userId} played cards ${cardIds} in room ${roomId}`);

@@ -46,7 +46,8 @@ export class Player {
      * @param cards the cards the player wants to play
      * @param target option target player for cards like Targeted Attack or Favor
      */
-    public playCards(game: Game, cardIds: number[], target?: Player) {
+    public playCards(game: Game, cardIds: number[], target?: Player): {stolenCard?: Card; futureCards?: Card[]} {
+        return { stolenCard: undefined, futureCards: undefined };
     }
 
     /**
