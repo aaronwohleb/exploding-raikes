@@ -108,14 +108,14 @@ export class Player {
      * Handles logic for multi-card combos. Designed to hand off card functionality to playCard() for single-card plays.
      * 
      * @param game the game state
+     * @returns the card info necessary for the play
      */
-    public playSelectedCards(game: Game) {
+    public playSelectedCards(game: Game): Card | Card[] {
         switch (this.selectedCards.length) {
             case 1:
                 //TODO: Query frontend for target if favor (Maybe targeted attack later)
                 let target: Player = this /* target of card, if applicable */;
-                this.playCard(game, this);
-                break;
+                return this.playCard(game, target);
 
             case 2:
                 //TODO: Do two-card combo
@@ -123,7 +123,8 @@ export class Player {
                     this.hand = this.hand.filter(currCard => currCard !== card);
                     game.discardPile.pile.unshift(card);
                 }
-                break;
+                // Stolen card
+                return {};
 
             case 3: 
                 //TODO: Do three-card combo
@@ -131,7 +132,8 @@ export class Player {
                     this.hand = this.hand.filter(currCard => currCard !== card);
                     game.discardPile.pile.unshift(card);
                 }
-                break;
+                // Stolen card
+                return {};
 
             case 5:
                 //TODO: Do five-card combo (Later)
@@ -139,9 +141,12 @@ export class Player {
                     this.hand = this.hand.filter(currCard => currCard !== card);
                     game.discardPile.pile.unshift(card);
                 }
-                break;
+                // Discard draw
+                return {};
                 
         }
+        console.error("This card play was invalid. (Not 1, 2, 3, 5 cards)");
+        return {};
     }
 
     /**
@@ -149,12 +154,12 @@ export class Player {
      * 
      * @param game the game being played on which to apply the Card's effects
      * @param target the target of the Card's effects NOTE: for no target, the target is the current player
-     * @returns an action code, which will affect the state of the game after the function executes
+     * @returns an array of cards for STF, one card for favor. An empty card is returned for cards that do not require info
      */
-    public playCard(game: Game, target: Player): Card[] {
+    public playCard(game: Game, target: Player): Card | Card[] {
         // play card with a target
-        let returnCards: Card[] = [];
-        let playedCard = this.selectedCards.splice(0, 1)[0];
+        let returnCard: Card = {};
+        let playedCard: Card = this.selectedCards.splice(0, 1)[0];
         switch (playedCard.type) {
             case CardType.Attack: 
                 // NOTE: game.numTurns MUST be 0 before a player's chance to play/draw ends
@@ -214,15 +219,16 @@ export class Player {
                 const receievedCard = target.hand.splice(0, 1)[0]; // temporary
                 game.activePlayer.hand.push(receievedCard);
                 console.log(`${game.activePlayer.name} succesfully asked a favor from ${target.name} and received a ${receievedCard.type.toString}`);
+                returnCard = receievedCard;
                 break;
                 
             case CardType.Nope:
                 //TODO: Implement before R2
 
             case CardType.See_the_Future:
-                returnCards = game.drawDeck.seeFuture(3);
+                let returnCards: Card[] = game.drawDeck.seeFuture(3);
                 console.log(`${game.activePlayer.name} just saw the future (x3)`);
-                break;
+                return returnCards;
 
             case CardType.Shuffle:
                 game.drawDeck.shuffleDeck();
@@ -243,7 +249,7 @@ export class Player {
                             game.activePlayer = game.playerList[0];
                             console.log(`${currPlayer} successfully skipped and ended their turn`);
                         } else {
-                            console.error("Unkown error occured in playCard{Attack}");
+                            console.error("Unkown error occured in playCard{Skip}");
                         }
                     }
                 }
@@ -252,7 +258,8 @@ export class Player {
 
         }
         this.hand.filter(card => card !== playedCard);
-        return returnCards;
+        // Empty if no card info, contains card for Favor
+        return returnCard;
     }
     
     /**
@@ -265,6 +272,7 @@ export class Player {
         // Remove the player from the playerList
         game.playerList = game.playerList.filter(player => player !== this);
         game.numTurns = 0;
+        console.log(`${this._name} has lost the game and been successfully removed from the playerList.`);
     }
 
     /**
