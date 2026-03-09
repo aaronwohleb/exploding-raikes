@@ -1,7 +1,8 @@
+import { Card, CardType } from '../types/types';
 /**
  * Represents a deck of Exploding Kittens cards with the functionality of the game's draw pile.
  */
-class DrawDeck {
+export class DrawDeck {
 
     private _deck: Card[];
 
@@ -12,43 +13,43 @@ class DrawDeck {
         this._deck = [];
         // Make full deck of cards
         for (let i: number = 0; i < 4; i++) {
-            this.deck.push(new Card(CardType.Attack, i, "Generic"));
+            this._deck.push({ type: CardType.Attack, id: i, name: "Generic" });
         }
         for (let i: number = 4; i < 8; i++) {
-            this.deck.push(new Card(CardType.Beard_Cat, i, "Generic"));
+            this._deck.push({ type: CardType.Beard_Cat, id: i, name: "Generic" });
         }
         for (let i: number = 8; i < 12; i++) {
-            this.deck.push(new Card(CardType.Catermelon, i, "Generic"));
+            this._deck.push({ type: CardType.Catermelon, id: i, name: "Generic" });
         }
         for (let i: number = 12; i < 16; i++) {
-            this.deck.push(new Card(CardType.Hairy_Potato_Cat, i, "Generic"));
+            this._deck.push({ type: CardType.Hairy_Potato_Cat, id: i, name: "Generic" });
         }
         for (let i: number = 16; i < 20; i++) {
-            this.deck.push(new Card(CardType.Rainbow_Ralphing_Cat, i, "Generic"));
+            this._deck.push({ type: CardType.Rainbow_Ralphing_Cat, id: i, name: "Generic" });
         }
         for (let i: number = 20; i < 24; i++) {
-            this.deck.push(new Card(CardType.Tacocat, i, "Generic"));
+            this._deck.push({ type: CardType.Tacocat, id: i, name: "Generic" });
         }
         for (let i: number = 24; i < 30; i++) {
-            this.deck.push(new Card(CardType.Defuse, i, "Generic"));
+            this._deck.push({ type: CardType.Defuse, id: i, name: "Generic" });
         }
         for (let i: number = 30; i < 34; i++) {
-            this.deck.push(new Card(CardType.Exploding_Kitten, i, "Generic"));
+            this._deck.push({ type: CardType.Exploding_Kitten, id: i, name: "Generic" });
         }
         for (let i: number = 34; i < 38; i++) {
-            this.deck.push(new Card(CardType.Favor, i, "Generic"));
+            this._deck.push({ type: CardType.Favor, id: i, name: "Generic" });
         }
         for (let i: number = 38; i < 43; i++) {
-            this.deck.push(new Card(CardType.Nope, i, "Generic"));
+            this._deck.push({ type: CardType.Nope, id: i, name: "Generic" });
         }
         for (let i: number = 43; i < 48; i++) {
-            this.deck.push(new Card(CardType.See_the_Future, i, "Generic"));
+            this._deck.push({ type: CardType.See_the_Future, id: i, name: "Generic" });
         }
         for (let i: number = 48; i < 52; i++) {
-            this.deck.push(new Card(CardType.Shuffle, i, "Generic"));
+            this._deck.push({ type: CardType.Shuffle, id: i, name: "Generic" });
         }
         for (let i: number = 52; i < 56; i++) {
-            this.deck.push(new Card(CardType.Skip, i, "Generic"));
+            this._deck.push({ type: CardType.Skip, id: i, name: "Generic" });
         }
     }
 
@@ -69,7 +70,7 @@ class DrawDeck {
      * @returns the array of cards to show
      */
     public seeFuture(numCards: number): Card[] {
-        return [this.deck[0]];
+        return this.deck.slice(0, numCards);
     }
 
     /**

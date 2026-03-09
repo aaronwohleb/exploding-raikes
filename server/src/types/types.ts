@@ -29,3 +29,32 @@ export interface LobbyState {
   maxPlayers: number;
   status: 'waiting' | 'starting' | 'playing' | 'closed';
 }
+
+/**
+ * Represents a Card's possible types.
+ * Uses string values so they survive being sent over the socket as JSON.
+ */
+export enum CardType {
+  Attack = 'Attack',
+  Beard_Cat = 'Beard_Cat',
+  Catermelon = 'Catermelon',
+  Hairy_Potato_Cat = 'Hairy_Potato_Cat',
+  Rainbow_Ralphing_Cat = 'Rainbow_Ralphing_Cat',
+  Tacocat = 'Tacocat',
+  Defuse = 'Defuse',
+  Exploding_Kitten = 'Exploding_Kitten',
+  Favor = 'Favor',
+  Nope = 'Nope',
+  See_the_Future = 'See_the_Future',
+  Shuffle = 'Shuffle',
+  Skip = 'Skip',
+}
+
+/**
+ * Fullstack representation of a Card, used for communication between frontend and backend.
+ */
+export interface Card {
+  id: number;
+  name: string;
+   type: CardType;
+}
