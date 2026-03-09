@@ -110,7 +110,7 @@ export class Player {
      * @param game the game state
      * @returns the card info necessary for the play
      */
-    public playSelectedCards(game: Game): Card | Card[] {
+    public playSelectedCards(game: Game): {stolenCard?: Card; futureCards?: Card[]} {
         switch (this.selectedCards.length) {
             case 1:
                 //TODO: Query frontend for target if favor (Maybe targeted attack later)
@@ -154,11 +154,11 @@ export class Player {
      * 
      * @param game the game being played on which to apply the Card's effects
      * @param target the target of the Card's effects NOTE: for no target, the target is the current player
-     * @returns an array of cards for STF, one card for favor. An empty card is returned for cards that do not require info
+     * @returns an array of cards for STF, one card for favor. For cards that require no info, return neither
      */
-    public playCard(game: Game, target: Player): Card | Card[] {
+    public playCard(game: Game, target: Player): {stolenCard?: Card; futureCards?: Card[]} {
         // play card with a target
-        let returnCard: Card = {};
+        let returnSet: {stolenCard?: Card; futureCards?: Card[]} = {};
         let playedCard: Card = this.selectedCards.splice(0, 1)[0];
         switch (playedCard.type) {
             case CardType.Attack: 
@@ -219,7 +219,7 @@ export class Player {
                 const receievedCard = target.hand.splice(0, 1)[0]; // temporary
                 game.activePlayer.hand.push(receievedCard);
                 console.log(`${game.activePlayer.name} succesfully asked a favor from ${target.name} and received a ${receievedCard.type.toString}`);
-                returnCard = receievedCard;
+                returnSet = {stolenCard: receievedCard};
                 break;
                 
             case CardType.Nope:
@@ -228,7 +228,7 @@ export class Player {
             case CardType.See_the_Future:
                 let returnCards: Card[] = game.drawDeck.seeFuture(3);
                 console.log(`${game.activePlayer.name} just saw the future (x3)`);
-                return returnCards;
+                returnSet = {futureCards: returnCards};
 
             case CardType.Shuffle:
                 game.drawDeck.shuffleDeck();
@@ -258,8 +258,8 @@ export class Player {
 
         }
         this.hand.filter(card => card !== playedCard);
-        // Empty if no card info, contains card for Favor
-        return returnCard;
+        // Empty if no card info, contains card for Favor, array for STF
+        return returnSet;
     }
     
     /**
