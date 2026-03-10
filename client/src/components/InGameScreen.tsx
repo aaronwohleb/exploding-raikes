@@ -1,122 +1,115 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { useGame } from "../context/GameContext";
 import { useAuth } from "../context/AuthContext";
+import { useLobby } from "../context/LobbyContext";
 import { AnimatePresence, motion } from "framer-motion";
-
-interface Player {
-  _id: string;
-  username: string;
-}
+import CardBack from "./CardBack";
+import CardFront from "./CardFront";
+import Deck from "./Deck";
 
 export default function InGameScreen() {
-
-  const location = useLocation();
-  const { currentFrontendUser } = useAuth();
-
   const { myHand, lastPlayedCard, drawCard, playCard } = useGame();
-
-  const {
-    players: lobbyPlayers = [],
-    roomId
-  } = (location.state || {}) as { players: Player[]; roomId: string };
-
-  const players = lobbyPlayers.map((player: Player) =>
-    player._id === currentFrontendUser?._id ? "You" : player.username
-  );
-
-  const prevHandSize = useRef(myHand.length);
-  const [drawAnimating, setDrawAnimating] = useState(false);
-
+  const { currentLobby } = useLobby();
+  const { currentFrontendUser } = useAuth();
+  const params = useParams();
+  
+  // Get roomId from URL params or from currentLobby
+  const roomId = params.roomId || currentLobby?.code || "ROOM_ID";
+  
+  // Log to debug
   useEffect(() => {
-    if (myHand.length > prevHandSize.current) {
-      setDrawAnimating(true);
-
-      setTimeout(() => {
-        setDrawAnimating(false);
-      }, 500);
-    }
-
-    prevHandSize.current = myHand.length;
-  }, [myHand]);
-
-  useEffect(() => {
+    console.log("Current myHand:", myHand);
     console.log("Room ID:", roomId);
-    console.log("Current hand:", myHand);
-  }, [roomId, myHand]);
+    console.log("Current Lobby:", currentLobby);
+  }, [myHand, roomId, currentLobby]);
+
+  // You'd get these from your game state/context
+  const deckSize = 40; // Replace with actual deck size from game state
+  
+  // Create opponent hands based on lobby players (excluding current user)
+  const opponentHands = currentLobby?.players
+    .filter(player => player._id !== currentFrontendUser?._id)
+    .map(player => ({
+      playerId: player.username || player._id,
+      cardCount: 5 // Replace with actual hand sizes from game state
+    })) || [];
 
   return (
     <div className="relative w-full h-screen bg-green-800 text-white">
 
-      {/* DRAW ANIMATION */}
-      <AnimatePresence>
-        {drawAnimating && (
-          <motion.div
-            initial={{ x: "-50%", y: "-50%", scale: 1 }}
-            animate={{ x: "-50%", y: "300%", scale: 0.7 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
-            className="absolute left-1/2 top-1/2 w-24 h-32 bg-blue-500 rounded flex items-center justify-center"
-          >
-            Card
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* PLAYER INDICATORS */}
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 flex gap-4">
-        {players.map((player: string, index: number) => (
-          <div key={index} className="px-4 py-2 bg-green-900 rounded-lg">
-            <span className="font-bold">{player}</span>
-
-            {player === "You" && (
-              <span className="ml-2 text-xs">
-                ({myHand.length} cards)
-              </span>
-            )}
-          </div>
-        ))}
-      </div>
-
       {/* CENTER BOARD */}
       <div className="absolute inset-0 flex items-center justify-center gap-20">
 
-        {/* DISCARD */}
-        <div className="w-24 h-32 bg-red-600 rounded flex items-center justify-center">
-          {lastPlayedCard ? lastPlayedCard.type : "Discard"}
+        {/* Last played card */}
+        <div className="w-24 h-32">
+          {lastPlayedCard ? (
+            <CardFront 
+              card={lastPlayedCard} 
+              animate={false}
+              className="w-full h-full"
+            />
+          ) : (
+            <div className="w-full h-full bg-amber-800/50 rounded-lg border-2 border-amber-600/50 flex items-center justify-center text-sm">
+              Discard
+            </div>
+          )}
         </div>
 
-        {/* DRAW DECK */}
-        <div
-          onClick={() => roomId && drawCard(roomId)}
-          className="w-24 h-32 bg-blue-600 rounded flex items-center justify-center cursor-pointer"
+        {/* Draw Deck */}
+        <Deck 
+          roomId={roomId}
+          cardCount={deckSize}
+          className="w-24 h-32"
+        />
+
+      </div>
+
+      {/* YOUR HAND (bottom) */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-sm font-semibold">Your Hand ({myHand.length})</span>
+          <div className="flex gap-2">
+            {myHand.length > 0 ? (
+              myHand.map((card) => (
+                <CardFront
+                  key={card.id}
+                  card={card}
+                  onClick={() => playCard(roomId, [card.id])}
+                  className="w-16 h-24"
+                  isPlayable={true}
+                  animate={true}
+                />
+              ))
+            ) : (
+              <div className="text-center p-4 text-white/70">
+                No cards in hand. Draw a card to start!
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* OPPONENT HANDS */}
+      {opponentHands.map((opponent, index) => (
+        <div 
+          key={opponent.playerId} 
+          className={`absolute ${
+            index === 0 ? 'top-6 left-1/2 -translate-x-1/2' : 
+            index === 1 ? 'left-6 top-1/2 -translate-y-1/2' : 
+            'right-6 top-1/2 -translate-y-1/2'
+          }`}
         >
-          Deck
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-sm font-semibold">{opponent.playerId}</span>
+            <div className="flex gap-2">
+              {Array.from({ length: opponent.cardCount }).map((_, index) => (
+                <CardBack key={index} className="w-16 h-24" />
+              ))}
+            </div>
+          </div>
         </div>
-
-      </div>
-
-      {/* PLAYER HAND */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-
-        <AnimatePresence>
-          {myHand.map((card: any) => (
-            <motion.div
-              key={card.id}
-              layout
-              initial={{ y: 80, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 80, opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              onClick={() => roomId && playCard(roomId, [card.id])}
-              className="w-16 h-24 bg-rose-700 rounded flex items-center justify-center cursor-pointer"
-            >
-              {card.type}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-
-      </div>
+      ))}
 
     </div>
   );

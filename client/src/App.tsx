@@ -33,23 +33,24 @@ function App() {
   return (
     <AuthProvider>
       <SocketProvider>
-        <LobbyProvider>
-          <BrowserRouter>
-            <div className="antialiased font-sans bg-gray-50 min-h-screen">
-              <Routes>
-                {/*Define paths */}
-                <Route path="/" element={<MainMenu />} />
-                <Route path="/join" element={<JoinLobbyPage />} />
-                <Route path="/create" element={<CreateLobbyPage />} />
-              <Route path="/lobby/:code" element={<LobbyRoomPage />} />
-                <Route path="/game" element={<GamePage />} />
-                <Route path="/howto" element={<HowToPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/mygame" element={<GameProvider><InGameScreen /></GameProvider>} />
-              </Routes>
-            </div>
-          </BrowserRouter>
-        </LobbyProvider>
+        <BrowserRouter>
+          <LobbyProvider>
+            <GameProvider>
+              <div className="antialiased font-sans bg-gray-50 min-h-screen">
+                <Routes>
+                  {/*Define paths */}
+                  <Route path="/" element={<MainMenu />} />
+                  <Route path="/join" element={<JoinLobbyPage />} />
+                  <Route path="/create" element={<CreateLobbyPage />} />
+                  <Route path="/lobby/:code" element={<LobbyRoomPage />} />
+                  <Route path="/howto" element={<HowToPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/game/:code" element={<InGameScreen />} />
+                </Routes>
+              </div>
+            </GameProvider>
+          </LobbyProvider>
+        </BrowserRouter>
       </SocketProvider>
     </AuthProvider>
   );
