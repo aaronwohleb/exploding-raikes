@@ -86,13 +86,12 @@ useEffect(() => {
     const handleStartGame = () => {
       navigate(`/game/${currentLobby?.code}`);
       console.log("Socket heard game started!");
-      // No need to update lobby state here since we're navigating away, but you could set a "gameStarted" flag if desired
     }
     
 
    
 
-    // Turn the listeners on using the exact strings from your Express backend
+    // Turn the listeners on using the exact strings emitted by the server
     socket.on('player-joined', handlePlayerJoined);
     socket.on('player-ready', handlePlayerReady);
     socket.on('player-left', handlePlayerLeft);

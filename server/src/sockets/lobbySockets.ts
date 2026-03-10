@@ -41,16 +41,43 @@ export function setupLobbySockets(io: Server) {
       }
     });
 
-    socket.on('start_game', async (data) => {
-      const { roomId } = data;
-      console.log(`Game starting in room: ${roomId}`);
-      const lobby = await Lobby.findOne({ code: roomId.toUpperCase() }).populate('players', 'username email');
-      const players: Player[] = [];
-      for (const player of lobby!.players as any) {
-        players.push(new Player( player.username, player._id));
+  // Listen for 'start_game' (matches frontend)
+  socket.on('start_game', async (data) => {
+  // Destructure the data from the event
+  const { roomId } = data;
+  const lobbyRoom = `lobby:${roomId}`;
+  const gameRoom = `game:${roomId}`;
+
+  // Fetch the lobby and its players
+  try {
+    const lobby = await Lobby.findOne({ code: roomId.toUpperCase() }).populate('players');
+    if (!lobby) return;
+    const sockets = await io.in(lobbyRoom).fetchSockets();
+    const players: Player[] = [];
+    // Create Player instances and assign playerNums based on the order in the lobby
+    lobby.players.forEach((player: any, i: number) => {
+      players.push(new Player(player.username, i));
+      const pSocket = sockets.find(s => s.data.userId === player._id.toString());
+      if (pSocket) {
+        pSocket.data.playerNum = i; 
+        pSocket.join(gameRoom);
       }
-      GameManager.getInstance().createGame(roomId, players);
-      io.to(`lobby:${roomId}`).emit('game_started');
     });
+
+    // Create the game and emit the initial hands to each player
+    GameManager.getInstance().createGame(roomId, players);
+    const game = GameManager.getInstance().getGame(roomId);
+    game?.playerList.forEach(player => {
+      const pSocket = sockets.find(s => s.data.playerNum === player.playerNum);
+      if (pSocket) {
+        pSocket.emit('update_hand', { fullHand: player.hand });
+      }
+    });
+
+    io.to(lobbyRoom).emit('game_started');
+  } catch (e) {
+    console.error(e);
+  }
+});
   });
 }

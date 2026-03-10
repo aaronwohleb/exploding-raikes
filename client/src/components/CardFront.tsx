@@ -16,24 +16,24 @@ import syntaxBugBase from '../assets/syntaxBugBase.png';
 
 // Map card types to their images
 const cardImageMap: Record<string, string> = {
-  'attack': attackBase,
-  'bathroom_drain_bug': bathroomDrainBugBase,
-  'defuse': defuseBase,
-  'exploding_cards': explodingCardsmock,
-  'exploding_kauffman': explodingKauffmanBase,
-  'mega_bug': megaBugBase,
-  'nope': nopeBase,
-  'see_the_future': seeTheFutureBase,
-  'shuffle': shuffleBase,
-  'skip': skipBase,
-  'syntax_bug': syntaxBugBase,
+  'Attack': attackBase,
+  'Bathroom_Drain_Bug': bathroomDrainBugBase,
+  'Defuse': defuseBase,
+  'Exploding_Cards': explodingCardsmock,
+  'Exploding_Kauffman': explodingKauffmanBase,
+  'Mega_Bug': megaBugBase,
+  'Nope': nopeBase,
+  'See_the_Future': seeTheFutureBase,
+  'Shuffle': shuffleBase,
+  'Skip': skipBase,
+  'Syntax_bug': syntaxBugBase,
 };
 
+//Card Front proops, all importnat stuff, save for the ? which are all optional extras
 interface CardFrontProps {
   card: {
     id: number;
     type: string;
-    // any other card properties
   };
   className?: string;
   onClick?: () => void;
@@ -41,6 +41,7 @@ interface CardFrontProps {
   animate?: boolean;
 }
 
+//Component definition
 export default function CardFront({ 
   card, 
   className = "", 
@@ -51,7 +52,7 @@ export default function CardFront({
   
   const cardImage = cardImageMap[card.type];
   
-  // If no image found for this card type
+  // Just a basic greyscale image if we dont have a matching image yet, right now cards without images cant be played, thats becasue of a small error i made, where if there is no card it returns the card without going through the onclick check, i think i know how to fix it, but its 2 in the morning so im going to fix it tomorrow
   if (!cardImage) {
     console.warn(`No image found for card type: ${card.type}`);
     return (
@@ -61,6 +62,7 @@ export default function CardFront({
     );
   }
 
+  // The actual card content
   const CardContent = () => (
     <div className="relative w-full h-full">
       <img 
@@ -76,6 +78,7 @@ export default function CardFront({
     </div>
   );
 
+  //All the cool stuff for animation
   if (animate && onClick) {
     return (
       <motion.div

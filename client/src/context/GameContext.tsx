@@ -13,7 +13,8 @@ interface GameContextType {
   // Emits a draw_card event to the server.
   drawCard: (roomId: string) => void;
   // Emits a play_card event to the server with the selected cards.
-  playCard: (roomId: string, cards: number[], targetPlayerId?: string) => void;
+  playCard: (roomId: string, cards: Card[], targetPlayerId?: string) => void; // Changed number[] to Card[]
+
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -111,9 +112,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
    * @param roomId - The ID of the room/game the player is in.
    * @param cards - The cards the player wants to play from their hand.
    */
- const playCard = (roomId: string, cardIds: number[], targetPlayerId?: string) => {
+  const playCard = (roomId: string, cards: Card[], targetPlayerId?: string) => {
     if (!socket) return;
-    socket.emit('play_card', { roomId, cardIds, targetPlayerId });
+
+    const cardToDiscard = cards[cards.length - 1];
+    setLastPlayedCard(cardToDiscard);
+    setMyHand((prev) => prev.filter((c) => !cards.some(played => played.id === c.id)));
+
+    socket.emit('play_card', { roomId, cards, targetPlayerId });
   };
 
   return (

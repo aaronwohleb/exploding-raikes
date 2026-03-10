@@ -1,106 +1,56 @@
 import { Server, Socket } from 'socket.io';
-import { Game } from '../game-runner/Game';
-import { Player } from '../game-runner/Player';
-import { activeGames } from '../game-runner/GameManager';
+import { GameManager } from '../game-runner/GameManager';
+import { Card } from '../types/types';
 
-/**
- * Registers all game-related socket events on the server.
- *
- * Handles
- * - Emitted from client: draw_card, play_card
- * - Emitted to client:   receive_card, player_draws_card, player_plays_card, see_the_future
- *
- * @param io - The socket.io Server instance created in server.ts.
- */
+//Setup for game sockets
 export function setupGameSockets(io: Server) {
   io.on('connection', (socket: Socket) => {
-
-    /**
-     * Draw Card. Fired when a player wants to draw a card, ending their turn.
-     * 
-     * Expects: { roomId: string }
-     * 
-     * Emits back to THIS player:      receive_card      — their updated hand
-     * Broadcasts to ALL in the room:  player_draws_card — who drew (no card details)
-     */
+    // Listen for 'join_game' (matches frontend)
     socket.on('draw_card', (data: { roomId: string }) => {
       const { roomId } = data;
-      const game = activeGames.get(roomId);
+      const game = GameManager.getInstance().getGame(roomId);
+      if (!game) return;
 
-      if (!game) {
-        console.error(`draw_card: no active game found for room ${roomId}`);
-        return;
-      }
+      // Find the player based on the socket's playerNum 
+      const player = game.playerList.find(p => p.playerNum === socket.data.playerNum);
+      if (!player) return;
 
-      const player = game.playerList.find(p => p.name === socket.data.userId);
-
-      if (!player) {
-        console.error(`draw_card: player ${socket.data.userId} not found in game ${roomId}`);
-        return;
-      }
-
-      // MIGHT NEED TO CHECK IF THIS IS CORRECT
+      // Player draws a card
       const drawnCard = player.drawCard(game);
-
-
-      // Send this player's full updated hand to prevent desync, along with the just drawn card for animation purposes
-      socket.emit('update_hand', { fullHand: player.hand, justDrawnCard: drawnCard });
-
-      // Broadcast to everyone in the room that this player drew (no card details)
+      socket.emit('update_hand', { fullHand: player.hand });
+      // Broadcast to all players that this player drew a card (without revealing the card)
       io.to(`game:${roomId}`).emit('player_draws_card', {
-        playerId: socket.data.userId
+        playerNum: player.playerNum,
+        deckCount: game.drawDeck.deck.length
       });
-
-      console.log(`draw_card: player ${socket.data.userId} drew a card in room ${roomId}`);
     });
 
+  // Listen for 'play_card' (matches frontend)
+  socket.on('play_card', (data: { roomId: string, cards: Card[], targetPlayerNum?: number }) => {
+  // Destructure the data from the event
+  const { roomId, cards, targetPlayerNum } = data;
+  const game = GameManager.getInstance().getGame(roomId);
+  if (!game) return;
 
-    /**
-     * PLAY CARD. Fired when a player wants to play one or more cards from their hand.
-     * 
-     * Expects: { roomId: string, cardIds: number[] }
-     * 
-     * Broadcasts to ALL in the room: player_plays_card — what was played
-     * Emits back to THIS player:     see_the_future    — only if See the Future was played
-     */
-    socket.on('play_card', (data: { roomId: string, cardIds: number[], targetPlayerId?: string }) => {
-      const { roomId, cardIds, targetPlayerId } = data;
-      const game = activeGames.get(roomId);
-
-      if (!game) {
-        console.error(`play_card: no active game found for room ${roomId}`);
-        return;
-      }
-
-      const player = game.playerList.find(p => p.name === socket.data.userId);
-
-      if (!player) {
-        console.error(`play_card: player ${socket.data.userId} not found in game ${roomId}`);
-        return;
-      }
-      
-      const playedCards = player.hand.filter(card => cardIds.includes(card.id));
-
-      const { stolenCard, futureCards } = player.playCards(game, cardIds);
-
-      // Broadcast to everyone in the room what was played
-      io.to(`game:${roomId}`).emit('player_plays_cards', {
-        playedCards,
-        playerId: socket.data.userId
-      });
-
-      // Send this player's full updated hand to prevent desync, along with the stolen card for animation purposes
-      socket.emit('update_hand', { fullHand: player.hand, stolenCard });
-
-      // If See the Future was played, send the top 3 cards only to this player
-      if (futureCards) {
-        socket.emit('see_the_future', futureCards);
-      }
-
-      console.log(`play_card: player ${socket.data.userId} played cards ${cardIds} in room ${roomId}`);
+  // Find the player based on the socket's playerNum
+  const player = game.playerList.find(p => p.playerNum === socket.data.playerNum);
+  if (!player) return;
+  // Process the played cards (remove from hand, add to discard pile, etc.)
+  try {
+    const playedIds = cards.map(c => c.id);
+    player.hand = player.hand.filter(c => !playedIds.includes(c.id));
+    game.discardPile.addCards(cards);
+    
+    // Broadcast to all players that this player played cards
+    io.to(`game:${roomId}`).emit('player_plays_cards', {
+      playerId: player.playerNum.toString(),
+      playedCards: cards, 
+      targetPlayerNum
     });
 
+  } catch (error) {
+    console.error("Server failed to process play_card:", error);
+  }
+});
   });
 }
-
-

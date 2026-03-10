@@ -1,115 +1,90 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import React, { useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { useGame } from "../context/GameContext";
 import { useAuth } from "../context/AuthContext";
 import { useLobby } from "../context/LobbyContext";
-import { AnimatePresence, motion } from "framer-motion";
 import CardBack from "./CardBack";
 import CardFront from "./CardFront";
-import Deck from "./Deck";
+import DrawDeck from "./DrawDeck"; 
+import DiscardDeck from "./DiscardDeck"; 
 
+//Player main screen definition
 export default function InGameScreen() {
-  const { myHand, lastPlayedCard, drawCard, playCard } = useGame();
+  const { myHand, lastPlayedCard, playCard } = useGame();
   const { currentLobby } = useLobby();
   const { currentFrontendUser } = useAuth();
-  const params = useParams();
+  const { roomId: paramRoomId } = useParams();
   
-  // Get roomId from URL params or from currentLobby
-  const roomId = params.roomId || currentLobby?.code || "ROOM_ID";
-  
-  // Log to debug
-  useEffect(() => {
-    console.log("Current myHand:", myHand);
-    console.log("Room ID:", roomId);
-    console.log("Current Lobby:", currentLobby);
-  }, [myHand, roomId, currentLobby]);
+  const roomId = paramRoomId || currentLobby?.code || "ROOM_ID";
 
-  // You'd get these from your game state/context
-  const deckSize = 40; // Replace with actual deck size from game state
-  
-  // Create opponent hands based on lobby players (excluding current user)
-  const opponentHands = currentLobby?.players
-    .filter(player => player._id !== currentFrontendUser?._id)
-    .map(player => ({
-      playerId: player.username || player._id,
-      cardCount: 5 // Replace with actual hand sizes from game state
-    })) || [];
+  // Filter out the current user to display opponents
+  const opponents = currentLobby?.players.filter(
+    (p) => p._id !== currentFrontendUser?._id
+  ) || [];
 
   return (
-    <div className="relative w-full h-screen bg-green-800 text-white">
-
-      {/* CENTER BOARD */}
-      <div className="absolute inset-0 flex items-center justify-center gap-20">
-
-        {/* Last played card */}
-        <div className="w-24 h-32">
-          {lastPlayedCard ? (
-            <CardFront 
-              card={lastPlayedCard} 
-              animate={false}
-              className="w-full h-full"
-            />
-          ) : (
-            <div className="w-full h-full bg-amber-800/50 rounded-lg border-2 border-amber-600/50 flex items-center justify-center text-sm">
-              Discard
-            </div>
-          )}
-        </div>
-
-        {/* Draw Deck */}
-        <Deck 
-          roomId={roomId}
-          cardCount={deckSize}
-          className="w-24 h-32"
-        />
-
-      </div>
-
-      {/* YOUR HAND (bottom) */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
-        <div className="flex flex-col items-center gap-2">
-          <span className="text-sm font-semibold">Your Hand ({myHand.length})</span>
-          <div className="flex gap-2">
-            {myHand.length > 0 ? (
-              myHand.map((card) => (
-                <CardFront
-                  key={card.id}
-                  card={card}
-                  onClick={() => playCard(roomId, [card.id])}
-                  className="w-16 h-24"
-                  isPlayable={true}
-                  animate={true}
-                />
-              ))
-            ) : (
-              <div className="text-center p-4 text-white/70">
-                No cards in hand. Draw a card to start!
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* OPPONENT HANDS */}
-      {opponentHands.map((opponent, index) => (
-        <div 
-          key={opponent.playerId} 
-          className={`absolute ${
-            index === 0 ? 'top-6 left-1/2 -translate-x-1/2' : 
-            index === 1 ? 'left-6 top-1/2 -translate-y-1/2' : 
-            'right-6 top-1/2 -translate-y-1/2'
-          }`}
-        >
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-sm font-semibold">{opponent.playerId}</span>
-            <div className="flex gap-2">
-              {Array.from({ length: opponent.cardCount }).map((_, index) => (
-                <CardBack key={index} className="w-16 h-24" />
+    <div className="relative w-full h-screen bg-emerald-800 text-white overflow-hidden flex flex-col">
+      
+      
+      <div className="h-1/4 w-full flex justify-center items-start pt-8 gap-12">
+        {opponents.map((opp) => (
+          <div key={opp._id} className="flex flex-col items-center gap-2">
+            <div className="relative flex -space-x-8">
+              
+              {[...Array(5)].map((_, i) => (
+                <CardBack key={i} className="w-12 h-16 border border-black/20" />
               ))}
             </div>
+            <span className="text-sm font-medium bg-black/40 px-3 py-1 rounded-full">
+              {opp.username}
+            </span>
           </div>
+        ))}
+      </div>
+
+      
+      <div className="flex-1 w-full flex flex-col items-center justify-center gap-8">
+        <div className="flex items-center gap-12 bg-white/5 p-12 rounded-[3rem] border border-white/10 shadow-2xl">
+          
+          
+          <div className="flex flex-col items-center gap-3">
+            <DrawDeck roomId={roomId} cardCount={40} className="w-28 h-40" />
+            <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Draw</span>
+          </div>
+
+          
+          <div className="flex flex-col items-center gap-3">
+            <DiscardDeck lastCard={lastPlayedCard} className="w-28 h-40" />
+            <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Discard</span>
+          </div>
+
         </div>
-      ))}
+      </div>
+
+      
+      <div className="h-1/3 w-full bg-gradient-to-t from-black/60 to-transparent flex flex-col items-center justify-end pb-10">
+        <div className="mb-4 flex items-center gap-4">
+          <h2 className="text-xl font-bold italic tracking-tighter text-amber-500">YOUR HAND</h2>
+          <span className="bg-amber-500 text-black px-2 py-0.5 rounded text-xs font-black">
+            {myHand.length} CARDS
+          </span>
+        </div>
+
+        <div className="flex -space-x-6 hover:space-x-2 transition-all duration-300">
+          {myHand.length > 0 ? (
+            myHand.map((card) => (
+              <CardFront
+                key={card.id}
+                card={card}
+                onClick={() => playCard(roomId, [card])} 
+                className="w-24 h-36 shadow-xl cursor-pointer"
+                />
+            ))
+          ) : (
+            <div className="text-white/30 italic">Drawing cards...</div>
+          )}
+        </div>
+      </div>
 
     </div>
   );
