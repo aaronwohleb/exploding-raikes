@@ -33,6 +33,25 @@ export class Game {
      */
     public dealCards() {
         //Deal starting hands
+        this.drawDeck.shuffleDeck();
+        for (const player of this.playerList) {
+            const defuseIndex = this.drawDeck.deck.findIndex(
+            card => card.type === "Defuse"
+        );
+
+        if (defuseIndex !== -1) {
+            const defuse = this.drawDeck.deck.splice(defuseIndex, 1)[0];
+            player.hand.push(defuse);
+        }
+
+        for (let i = 0; i < 7; i++) {
+            const card = this.drawDeck.deck.shift();
+            if (card) {
+                player.hand.push(card);
+            }
+        }
+    }
+
     }
 
     /**

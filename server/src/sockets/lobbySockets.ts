@@ -1,5 +1,8 @@
 import { Server, Socket } from 'socket.io';
 import { processPlayerLeave } from '../controllers/lobbyController';
+import { GameManager } from '../game-runner/GameManager';
+import { Lobby } from '../types/Lobby';
+import { Player } from '../game-runner/Player';
 
 export function setupLobbySockets(io: Server) {
   io.on('connection', (socket: Socket) => {
@@ -36,6 +39,18 @@ export function setupLobbySockets(io: Server) {
           console.error("Socket disconnect cleanup failed:", error);
         }
       }
+    });
+
+    socket.on('start_game', async (data) => {
+      const { roomId } = data;
+      console.log(`Game starting in room: ${roomId}`);
+      const lobby = await Lobby.findOne({ code: roomId.toUpperCase() }).populate('players', 'username email');
+      const players: Player[] = [];
+      for (const player of lobby!.players as any) {
+        players.push(new Player( player.username, player._id));
+      }
+      GameManager.getInstance().createGame(roomId, players);
+      io.to(`lobby:${roomId}`).emit('game_started');
     });
   });
 }

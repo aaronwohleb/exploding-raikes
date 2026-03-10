@@ -3,12 +3,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLobby } from "../context/LobbyContext";
+import { useGameSocket } from "../context/SocketContext";
 
 export default function LobbyRoomPage() {
+  const { socket } = useGameSocket();
   const navigate = useNavigate();
-  const { code } = useParams<{ code: string }>(); // Gets the code from /lobby/:code
   const { currentFrontendUser } = useAuth();
-  const { currentLobby, clearLobby, toggleReadyStatus, leaveCurrentLobby } = useLobby();
+  const { currentLobby, clearLobby, toggleReadyStatus, leaveCurrentLobby, startGame } = useLobby();
 
   const [copied, setCopied] = useState(false);
   const [isTogglingReady, setIsTogglingReady] = useState(false);
@@ -56,9 +57,8 @@ export default function LobbyRoomPage() {
     navigate("/");
   };
 
-  const handleStartGame = () => {
-    // TODO start game stuff
-    console.log("Starting game...");
+  const handleStartGame = async () => {
+    await startGame();
   };
 
   return (

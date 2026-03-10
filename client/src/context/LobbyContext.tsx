@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import * as api from '../services/api';
 import { LobbyState } from '../types/types';
+import { useNavigate } from 'react-router-dom';  
 import { useGameSocket } from './SocketContext';
 
 
@@ -11,11 +12,13 @@ interface LobbyContextType {
   clearLobby: () => void;
   toggleReadyStatus: (userId: string, isReady: boolean) => Promise<void>;
   leaveCurrentLobby: (userId: string) => Promise<void>;
+  startGame: () => void;
 }
 
 const LobbyContext = createContext<LobbyContextType | undefined>(undefined);
 
 export function LobbyProvider({ children }: { children: ReactNode }) {
+  const navigate = useNavigate();
   const [currentLobby, setCurrentLobby] = useState<LobbyState | null>(null);
   const { socket, joinRoom, leaveRoom } = useGameSocket();
 
@@ -80,16 +83,27 @@ useEffect(() => {
       });
     };
 
+    const handleStartGame = () => {
+      navigate(`/game/${currentLobby?.code}`);
+      console.log("Socket heard game started!");
+      // No need to update lobby state here since we're navigating away, but you could set a "gameStarted" flag if desired
+    }
+    
+
+   
+
     // Turn the listeners on using the exact strings from your Express backend
     socket.on('player-joined', handlePlayerJoined);
     socket.on('player-ready', handlePlayerReady);
     socket.on('player-left', handlePlayerLeft);
+    socket.on('game_started', handleStartGame);
 
     // Turn the listeners off when the component unmounts
     return () => {
       socket.off('player-joined', handlePlayerJoined);
       socket.off('player-ready', handlePlayerReady);
       socket.off('player-left', handlePlayerLeft);
+      socket.off('game_started', handleStartGame);
     };
   }, [socket]);
 
@@ -162,8 +176,13 @@ useEffect(() => {
     }
   };
 
+  const startGame = () => {
+    if (!socket) return;
+    socket.emit('start_game', { roomId: currentLobby?.code });
+  };
+
   return (
-    <LobbyContext.Provider value={{ currentLobby, createNewLobby, joinExistingLobby, clearLobby, toggleReadyStatus, leaveCurrentLobby }}>
+    <LobbyContext.Provider value={{ currentLobby, createNewLobby, joinExistingLobby, clearLobby, toggleReadyStatus, leaveCurrentLobby, startGame }}>
       {children}
     </LobbyContext.Provider>
   );
