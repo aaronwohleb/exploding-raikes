@@ -1,4 +1,5 @@
 import { Card, CardType } from '../types/types';
+import { Game } from './Game';
 
 /**
  * Represents a deck of Exploding Kittens cards with the functionality of the game's draw pile.
@@ -7,10 +8,12 @@ export class DrawDeck {
 
     private _deck: Card[];
 
+    private readonly HandSize: number = 7;
+
     /**
      * Builds a full deck of Exploding Kittens Cards.
      */
-    public constructor() {
+    public constructor(game: Game) {
         this._deck = [];
         // Make full deck of cards (Hard coded and subject to change)
         const cardConfigs = [
@@ -20,8 +23,6 @@ export class DrawDeck {
             { type: CardType.Hairy_Potato_Cat, count: 4 },
             { type: CardType.Rainbow_Ralphing_Cat, count: 4 },
             { type: CardType.Tacocat, count: 4 },
-            { type: CardType.Defuse, count: 6 },
-            { type: CardType.Exploding_Kitten, count: 4 },
             { type: CardType.Favor, count: 4 },
             { type: CardType.Nope, count: 5 },
             { type: CardType.See_the_Future, count: 5 },
@@ -37,6 +38,45 @@ export class DrawDeck {
                     name: "Generic"
                 });
             }
+        }
+
+        this.dealCards(game, currentId);
+        currentId = currentId + game.playerList.length;
+
+        const extraConfigs = [
+            { type: CardType.Defuse, count: 8 - game.playerList.length },
+            { type: CardType.Exploding_Kitten, count: 4 }
+        ];
+
+        for (const config of extraConfigs) {
+            for (let i = 0; i < config.count; i++) {
+                this.deck.push({
+                    type: config.type,
+                    id: currentId++,
+                    name: "Generic"
+                });
+            }
+        }
+
+        this.shuffleDeck();
+    }
+
+    /**
+     * Helper function to deal a starting hand to each player. A starting hand should have 7 non-defuse, non-exploding kitten cards, and 1 defuse.
+     */
+    public dealCards(game: Game, currId: number) {
+        for (let i = 0; i < this.HandSize; i++) {
+            for (let player of game.playerList) {
+                //TODO: add undefined checking for shift
+                player.hand.push(this._deck.shift()!)
+            }
+        }
+        for (let player of game.playerList) {
+            player.hand.push({
+                id: currId++,
+                type: CardType.Defuse,
+                name: "Generic"
+            })
         }
     }
 
