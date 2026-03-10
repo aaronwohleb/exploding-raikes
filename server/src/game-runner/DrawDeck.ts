@@ -40,7 +40,10 @@ export class DrawDeck {
             }
         }
 
+        // Shuffle basic cards before dealing
+        this.shuffleDeck();
         this.dealCards(game, currentId);
+        // Where to leave off after defuses added
         currentId = currentId + game.playerList.length;
 
         const extraConfigs = [
@@ -58,6 +61,7 @@ export class DrawDeck {
             }
         }
 
+        // Final shuffle
         this.shuffleDeck();
     }
 
