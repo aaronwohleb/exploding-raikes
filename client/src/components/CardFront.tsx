@@ -51,25 +51,23 @@ export default function CardFront({
 }: CardFrontProps) {
   
   const cardImage = cardImageMap[card.type];
-  
-  // Just a basic greyscale image if we dont have a matching image yet, right now cards without images cant be played, thats becasue of a small error i made, where if there is no card it returns the card without going through the onclick check, i think i know how to fix it, but its 2 in the morning so im going to fix it tomorrow
-  if (!cardImage) {
-    console.warn(`No image found for card type: ${card.type}`);
-    return (
-      <div className={`w-24 h-32 bg-gray-700 rounded-lg flex items-center justify-center text-white p-2 text-center text-xs ${className}`}>
-        {card.type}
-      </div>
-    );
-  }
 
-  // The actual card content
+  //Card content extraction
   const CardContent = () => (
     <div className="relative w-full h-full">
-      <img 
-        src={cardImage} 
-        alt={card.type}
-        className="w-full h-full object-contain rounded-lg"
-      />
+      {cardImage ? (
+        <img 
+          src={cardImage} 
+          alt={card.type}
+          className="w-full h-full object-contain rounded-lg"
+        />
+      ) : (
+        //If a card doesnt have an image
+        <div className="w-full h-full bg-gray-700 rounded-lg flex items-center justify-center text-white p-2 text-center text-xs">
+          {card.type}
+        </div>
+      )}
+      
       {!isPlayable && (
         <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
           <span className="text-white text-xs font-bold">Not playable</span>
@@ -78,33 +76,23 @@ export default function CardFront({
     </div>
   );
 
-  //All the cool stuff for animation
-  if (animate && onClick) {
-    return (
-      <motion.div
-        className={`relative w-24 h-32 cursor-pointer hover:scale-105 transition-transform ${className}`}
-        onClick={onClick}
-        whileHover={{ y: -5, rotate: 2 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        <CardContent />
-      </motion.div>
-    );
-  }
-
+  // properly animates the cards now picture or no picutre
   if (animate) {
     return (
       <motion.div
-        className={`relative w-24 h-32 ${className}`}
-        whileHover={{ y: -5 }}
+        className={`relative w-24 h-32 ${onClick ? "cursor-pointer" : ""} ${className}`}
+        onClick={onClick}
+        whileHover={isPlayable ? { y: -5, rotate: 2, scale: 1.05 } : {}}
+        whileTap={isPlayable ? { scale: 0.95 } : {}}
       >
         <CardContent />
       </motion.div>
     );
   }
 
+  //If there is no animation reutn the contnet
   return (
-    <div className={`relative w-24 h-32 ${className}`}>
+    <div className={`relative w-24 h-32 ${className}`} onClick={onClick}>
       <CardContent />
     </div>
   );
