@@ -1,28 +1,33 @@
 {
-    "name": "exploding-kittens-server",
-    "version": "1.0.0",
-    "description": "Backend for Exploding Kittens game",
-    "main": "src/server.ts",
-    "scripts": {
-        "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-        "start": "tsc && node dist/server.js"
-    },
-    "dependencies": {
-        "bcryptjs": "^3.0.3",
-        "cors": "^2.8.5",
-        "dotenv": "^16.0.3",
-        "express": "^4.18.2",
-        "jsonwebtoken": "^9.0.3",
-        "mongoose": "^7.0.0",
-        "socket.io": "^4.6.1"
-    },
-    "devDependencies": {
-        "@types/bcryptjs": "^2.4.6",
-        "@types/cors": "^2.8.13",
-        "@types/express": "^4.17.17",
-        "@types/jsonwebtoken": "^9.0.10",
-        "@types/node": "^20.0.0",
-        "ts-node-dev": "^2.0.0",
-        "typescript": "^5.0.0"
-    }
+  "name": "exploding-kittens-server",
+  "version": "1.0.0",
+  "description": "Backend for Exploding Kittens game",
+  "main": "src/server.ts",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "start": "tsc && node dist/server.js",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^7.0.0",
+    "socket.io": "^4.6.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.13",
+    "@types/express": "^4.17.17",
+    "@types/jest": "^30.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20.0.0",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.6",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.0.0"
+  }
 }
