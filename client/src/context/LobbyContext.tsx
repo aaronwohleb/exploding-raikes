@@ -83,12 +83,10 @@ useEffect(() => {
       });
     };
 
-    const handleStartGame = () => {
-      navigate(`/game/${currentLobby?.code}`);
+    const handleStartGame = (data: { roomId: string }) => {
+      navigate(`/game/${data.roomId}`);
       console.log("Socket heard game started!");
     }
-    
-
    
 
     // Turn the listeners on using the exact strings emitted by the server
@@ -177,6 +175,7 @@ useEffect(() => {
 
   const startGame = () => {
     if (!socket) return;
+    console.log("Emitting start game with room ID:", currentLobby?.code);
     socket.emit('start_game', { roomId: currentLobby?.code });
   };
 

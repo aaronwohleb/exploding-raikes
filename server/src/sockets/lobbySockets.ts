@@ -13,7 +13,6 @@ export function setupLobbySockets(io: Server) {
       const { roomId, userId } = data;
       socket.join(`lobby:${roomId}`);
       socket.data.roomId = roomId;
-      socket.data.userId = userId;
       console.log(`Socket ${socket.id} joined lobby room: ${roomId}`);
     });
 
@@ -44,37 +43,27 @@ export function setupLobbySockets(io: Server) {
   // Listen for 'start_game' (matches frontend)
   socket.on('start_game', async (data) => {
   // Destructure the data from the event
+  console.log("START GAME", data);
   const { roomId } = data;
-  const lobbyRoom = `lobby:${roomId}`;
-  const gameRoom = `game:${roomId}`;
 
   // Fetch the lobby and its players
   try {
-    const lobby = await Lobby.findOne({ code: roomId.toUpperCase() }).populate('players');
+    const lobby = await Lobby.findOne({ code: roomId.toUpperCase() }).populate('players', 'username email');
     if (!lobby) return;
-    const sockets = await io.in(lobbyRoom).fetchSockets();
+    lobby.status = 'starting';
+    await lobby.save();
+
     const players: Player[] = [];
     // Create Player instances and assign playerNums based on the order in the lobby
     lobby.players.forEach((player: any, i: number) => {
-      players.push(new Player(player.username, i));
-      const pSocket = sockets.find(s => s.data.userId === player._id.toString());
-      if (pSocket) {
-        pSocket.data.playerNum = i; 
-        pSocket.join(gameRoom);
-      }
-    });
+          players.push(new Player(player.username, i, player._id.toString()));
+        });
 
     // Create the game and emit the initial hands to each player
     GameManager.getInstance().createGame(roomId, players);
-    const game = GameManager.getInstance().getGame(roomId);
-    game?.playerList.forEach(player => {
-      const pSocket = sockets.find(s => s.data.playerNum === player.playerNum);
-      if (pSocket) {
-        pSocket.emit('update_hand', { fullHand: player.hand });
-      }
-    });
 
-    io.to(lobbyRoom).emit('game_started');
+
+    io.to(`lobby:${lobby.code}`).emit('game_started', { roomId });
   } catch (e) {
     console.error(e);
   }

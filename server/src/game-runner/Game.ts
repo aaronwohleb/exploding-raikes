@@ -20,39 +20,14 @@ export class Game {
      */
     public constructor(playerList: Player[]) {
         this._playerList = playerList;
-        this._drawDeck = new DrawDeck();
+        this._drawDeck = new DrawDeck(this);
         this._discardPile = new DiscardPile();
         this._activePlayer = this.playerList[0];
         this._numTurns = 1;
 
-        this.dealCards();
     }
 
-    /**
-     * Helper function to deal a starting hand to each player. A starting hand should have 7 non-defuse, non-exploding kitten cards, and 1 defuse.
-     */
-    public dealCards() {
-        //Deal starting hands
-        this.drawDeck.shuffleDeck();
-        for (const player of this.playerList) {
-            const defuseIndex = this.drawDeck.deck.findIndex(
-            card => card.type === "Defuse"
-        );
 
-        if (defuseIndex !== -1) {
-            const defuse = this.drawDeck.deck.splice(defuseIndex, 1)[0];
-            player.hand.push(defuse);
-        }
-
-        for (let i = 0; i < 7; i++) {
-            const card = this.drawDeck.deck.shift();
-            if (card) {
-                player.hand.push(card);
-            }
-        }
-    }
-
-    }
 
     /**
      * Gets the game's playerList.

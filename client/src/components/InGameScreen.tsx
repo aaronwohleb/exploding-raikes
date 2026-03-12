@@ -1,5 +1,6 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useGame } from "../context/GameContext";
 import { useAuth } from "../context/AuthContext";
 import { useLobby } from "../context/LobbyContext";
@@ -7,48 +8,115 @@ import CardBack from "./CardBack";
 import CardFront from "./CardFront";
 import DrawDeck from "./DrawDeck"; 
 import DiscardDeck from "./DiscardDeck"; 
+import { CardType } from "../types/types";
 
 //Player main screen definition
 export default function InGameScreen() {
-  const { myHand, lastPlayedCard, playCard } = useGame();
+  const { 
+    myHand, 
+    lastPlayedCard, 
+    deckCount, 
+    activeUserId,
+    defuseRequest,
+    submitDefuseLocation,
+    playCard, 
+    actionRequiresTarget, 
+    favorRequest, 
+    seeTheFutureCards,
+    closeSeeTheFuture,
+    submitTarget, 
+    submitFavorCard,
+    requestInitialState
+  } = useGame();
+
+  
   const { currentLobby } = useLobby();
   const { currentFrontendUser } = useAuth();
   const { roomId: paramRoomId } = useParams();
+  const [defuseIndex, setDefuseIndex] = useState<number>(0);
   
   const roomId = paramRoomId || currentLobby?.code || "ROOM_ID";
 
+  useEffect(() => {
+    if (roomId && currentFrontendUser) {
+      requestInitialState(roomId, currentFrontendUser._id);
+    }
+  }, [roomId, currentFrontendUser]);
+
+  // State to track which cards the user has selected to play (for combos)
+  const [selectedCardIds, setSelectedCardIds] = useState<number[]>([]);
+  
   // Filter out the current user to display opponents
   const opponents = currentLobby?.players.filter(
     (p) => p._id !== currentFrontendUser?._id
   ) || [];
 
+  const isMyTurn = activeUserId === currentFrontendUser?._id;
+
+  // Toggle card selection
+  const handleCardClick = (cardId: number) => {
+    setSelectedCardIds((prev) => 
+      prev.includes(cardId) 
+        ? prev.filter(id => id !== cardId) 
+        : [...prev, cardId]
+    );
+  };
+
+  // Play the selected cards
+  const handlePlaySelected = () => {
+    if (selectedCardIds.length > 0) {
+      playCard(roomId, selectedCardIds);
+      setSelectedCardIds([]); // Clear selection after playing
+    }
+  };
+
   return (
-    <div className="relative w-full h-screen bg-emerald-800 text-white overflow-hidden flex flex-col">
+    // <div className="relative w-full h-screen bg-emerald-800 text-white overflow-hidden flex flex-col">
+    <div 
+      className="relative w-full h-screen overflow-hidden flex flex-col selection:bg-red-100"
+      style={{
+        backgroundColor: "#065F46",
+        color: "#0F0F0F",
+        fontFamily: '"bebas-neue-pro-semiexpanded", sans-serif',
+      }}
+    >
       
-      
+      {/* --- OPPONENTS AREA --- */}
       <div className="h-1/4 w-full flex justify-center items-start pt-8 gap-12">
-        {opponents.map((opp) => (
-          <div key={opp._id} className="flex flex-col items-center gap-2">
-            <div className="relative flex -space-x-8">
-              
-              {[...Array(5)].map((_, i) => (
-                <CardBack key={i} className="w-12 h-16 border border-black/20" />
-              ))}
+        {opponents.map((opp) => {
+          // Check if it is this specific opponent's turn
+          const isOpponentTurn = activeUserId === opp._id;
+
+          return (
+            <div 
+              key={opp._id} 
+              className={`flex flex-col items-center gap-2 transition-all duration-300 ${isOpponentTurn ? 'scale-110 drop-shadow-2xl opacity-100' : 'opacity-50'}`}
+            >
+              {/* Floating Thinking Badge */}
+              <div className="h-4">
+                {isOpponentTurn && <span className="text-amber-400 font-bold text-sm animate-pulse tracking-widest">THINKING...</span>}
+              </div>
+
+              <div className="relative flex -space-x-8">
+                {[...Array(5)].map((_, i) => (
+                  <CardBack key={i} className="w-12 h-16" />
+                ))}
+              </div>
+              <span className={`text-lg font-medium px-3 py-1 rounded-full ${isOpponentTurn ? 'bg-amber-500 text-black' : 'bg-black/40 text-white'}`}>
+                {opp.username}
+              </span>
             </div>
-            <span className="text-sm font-medium bg-black/40 px-3 py-1 rounded-full">
-              {opp.username}
-            </span>
-          </div>
-        ))}
+        );
+      })}
       </div>
 
-      
+      {/* --- MAIN BOARD --- */}
       <div className="flex-1 w-full flex flex-col items-center justify-center gap-8">
         <div className="flex items-center gap-12 bg-white/5 p-12 rounded-[3rem] border border-white/10 shadow-2xl">
           
           
           <div className="flex flex-col items-center gap-3">
-            <DrawDeck roomId={roomId} cardCount={40} className="w-28 h-40" />
+            <DrawDeck roomId={roomId} cardCount={deckCount} className="w-28 h-40" />
             <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Draw</span>
           </div>
 
@@ -61,30 +129,220 @@ export default function InGameScreen() {
         </div>
       </div>
 
-      
-      <div className="h-1/3 w-full bg-gradient-to-t from-black/60 to-transparent flex flex-col items-center justify-end pb-10">
+      {/* --- PLAYER HAND AREA --- */}
+      <div className={`h-1/3 w-full flex flex-col items-center justify-end pb-10 transition-colors duration-500 ${isMyTurn ? 'bg-gradient-to-t from-amber-500/20 to-transparent' : 'bg-gradient-to-t from-black/60 to-transparent'}`}>
+        
         <div className="mb-4 flex items-center gap-4">
-          <h2 className="text-xl font-bold italic tracking-tighter text-amber-500">YOUR HAND</h2>
-          <span className="bg-amber-500 text-black px-2 py-0.5 rounded text-xs font-black">
+          <h2 className={`text-xl font-bold italic tracking-tighter ${isMyTurn ? 'text-amber-400 animate-pulse' : 'text-gray-400'}`}>
+            {isMyTurn ? '👉 YOUR TURN 👈' : 'YOUR HAND'}
+          </h2>
+          <span className={`${isMyTurn ? 'bg-amber-400 text-black' : 'bg-gray-600 text-gray-300'} px-2 py-0.5 rounded text-xs font-black transition-colors`}>
             {myHand.length} CARDS
           </span>
+          
+          {selectedCardIds.length > 0 && isMyTurn && (
+            <button 
+              onClick={handlePlaySelected}
+              className="ml-4 bg-[#B81C27] hover:bg-red-600 text-white px-6 py-2 rounded-full font-bold uppercase tracking-widest shadow-lg transition-transform hover:scale-105"
+            >
+              Play Selected ({selectedCardIds.length})
+            </button>
+          )}
         </div>
 
-        <div className="flex -space-x-6 hover:space-x-2 transition-all duration-300">
+        {/* Hand Render (card fanning effect)*/}
+        <div className={`flex justify-center items-end h-64 px-8 w-full transition-all duration-300}`}>
           {myHand.length > 0 ? (
-            myHand.map((card) => (
-              <CardFront
-                key={card.id}
-                card={card}
-                onClick={() => playCard(roomId, [card])} 
-                className="w-24 h-36 shadow-xl cursor-pointer"
-                />
-            ))
+            myHand.map((card, index) => {
+              const isSelected = selectedCardIds.includes(card.id);
+              return (
+                <div 
+                  key={card.id} 
+                  className={`relative cursor-pointer transition-all duration-300 ease-out transform-gpu
+                    ${index === 0 ? 'ml-0' : '-ml-4'} 
+                    ${isSelected 
+                      ? '-translate-y-12 mx-4 scale-110 z-30' 
+                      : 'hover:-translate-y-12 hover:mx-4 hover:scale-110 hover:rotate-2 hover:z-40 z-10'
+                    }
+                  `}
+                >
+                  <CardFront
+                    card={card}
+                    onClick={() => handleCardClick(card.id)} 
+                    // Add a ring and translate upward if the card is currently selected
+                    className={`w-24 h-36 cursor-pointer transition-all ${
+                      isSelected ? '-translate-y-6 ring-4 ring-amber-500 rounded-lg' : ''
+                    }`}
+                  />
+                </div>
+              );
+            })
           ) : (
             <div className="text-white/30 italic">Drawing cards...</div>
           )}
         </div>
       </div>
+
+
+      {/* INTERACTIVE MODALS */}
+
+      {/* Defuse Slider Modal */}
+      {defuseRequest && (
+        <div className="absolute inset-0 bg-red-900/90 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#FCF8EE] text-[#0F0F0F] p-8 rounded-2xl max-w-md w-full shadow-2xl flex flex-col items-center">
+             <h2 className="text-5xl font-bold uppercase tracking-[0.02em] mb-2 text-[#B81C27] animate-pulse">
+                 DEFUSED!
+             </h2>
+             <p className="mb-6 text-gray-600 text-xl text-center">
+                 You stopped the explosion! Now, secretly place the Exploding Kauffman back into the deck.
+             </p>
+             
+             <div className="w-full mb-8">
+                 <label className="font-normal text-lg uppercase tracking-widest text-gray-500 flex justify-between">
+                     <span>Top</span>
+                     <span>Bottom</span>
+                 </label>
+                 
+                 <input 
+                     type="range" 
+                     min="0" 
+                     max={defuseRequest.maxIndex} 
+                     defaultValue="0"
+                     onChange={(e) => setDefuseIndex(Number(e.target.value))}
+                     className="w-full mt-2 accent-[#B81C27] h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                 />
+                 
+                 <p className="text-center mt-4 font-bold text-2xl text-[#B81C27] uppercase">
+                     Position: {defuseIndex === 0 ? "Top Card" : defuseIndex === defuseRequest.maxIndex ? "Bottom Card" : `Depth: ${defuseIndex}`}
+                 </p>
+             </div>
+
+             <motion.button
+                 whileHover={{ scale: 1.02 }}
+                 whileTap={{ scale: 0.98 }}
+                 onClick={() => submitDefuseLocation(roomId, defuseIndex)}
+                 className="bg-[#B81C27] hover:bg-[#C81C27] text-[#FCF8EE] px-8 py-4 rounded-[4px] font-normal text-2xl uppercase tracking-[0.02em] shadow-sm w-full transition-colors"
+             >
+                 Hide Kauffman
+             </motion.button>
+          </div>
+        </div>
+      )}
+
+      
+
+
+      {/* See the Future Modal */}
+      {seeTheFutureCards && seeTheFutureCards.length > 0 && (
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#FCF8EE] text-[#0F0F0F] p-10 rounded-2xl max-w-3xl w-full shadow-2xl flex flex-col items-center">
+            <h2 className="text-5xl font-bold uppercase tracking-[0.02em] mb-2 text-[#0F0F0F]">
+              The Future
+            </h2>
+            <p className="mb-8 text-gray-500 text-xl uppercase tracking-widest">
+              Here are the top {seeTheFutureCards.length} cards of the deck.
+            </p>
+            
+            <div className="flex gap-8 mb-8">
+              {seeTheFutureCards.map((card, idx) => (
+                <div key={`${card.id}-${idx}`} className="flex flex-col items-center gap-3">
+                   <span className="font-bold text-gray-400 uppercase tracking-widest text-lg">
+                     {idx === 0 ? "Top Card" : `Card ${idx + 1}`}
+                   </span>
+                   <CardFront card={card} animate={false} className="w-36 h-52 rounded-lg" />
+                </div>
+              ))}
+            </div>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={closeSeeTheFuture}
+              className="bg-[#B81C27] hover:bg-[#C81C27] text-[#FCF8EE] px-16 py-4 rounded-[4px] text-2xl font-normal uppercase tracking-[0.02em] transition-colors"
+            >
+              Done
+            </motion.button>
+          </div>
+        </div>
+      )}
+
+      {/* Target Selection Modal (For Favors and Combos) */}
+      {actionRequiresTarget && (
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#FCF8EE] text-[#0F0F0F] p-10 rounded-2xl max-w-md w-full shadow-2xl">
+            <h2 className="text-5xl font-bold uppercase tracking-[0.02em] mb-2 text-[#0F0F0F] text-center">
+              Select Target
+            </h2>
+            <p className="mb-8 text-gray-500 text-xl text-center">
+              You played a {actionRequiresTarget.replace(/_/g, " ")}. Who do you want to target?
+            </p>
+
+            {actionRequiresTarget === 'Three_Card_Combo' && (
+              <div className="mb-6">
+                <label className="font-normal text-xl uppercase tracking-widest text-gray-900">
+                  Card Type to Steal:
+                </label>
+                <select 
+                  id="requestedCardType" 
+                  className="block w-full mt-2 p-4 bg-gray-100 focus:ring-2 focus:ring-[#C81C27] focus:outline-none border-none rounded-xl text-xl font-normal uppercase transition-all"
+                >
+                  {Object.values(CardType).map(type => (
+                    <option key={type} value={type}>{type.replace(/_/g, " ")}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-4">
+              {opponents.map(opp => (
+                <motion.button
+                  key={opp._id}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    const requestedType = actionRequiresTarget === 'Three_Card_Combo'
+                      ? (document.getElementById('requestedCardType') as HTMLSelectElement).value as CardType
+                      : undefined;
+                    
+                    submitTarget(roomId, opp._id, actionRequiresTarget, requestedType);
+                  }}
+                  className="w-full bg-white border-2 border-gray-200 hover:border-[#B81C27] text-[#0F0F0F] py-4 px-4 rounded-[4px] text-2xl font-normal uppercase tracking-[0.02em] transition-colors"
+                >
+                  {opp.username}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Favor Request Modal (For the victim) */}
+      {favorRequest && (
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#FCF8EE] text-[#0F0F0F] p-10 rounded-2xl max-w-4xl w-full shadow-2xl">
+            <h2 className="text-5xl font-bold uppercase tracking-[0.02em] mb-2 text-[#0F0F0F] text-center">
+              Favor Requested!
+            </h2>
+            <p className="mb-8 text-gray-600 text-2xl text-center">
+              <span className="font-bold text-[#B81C27]">{favorRequest.sourcePlayerName}</span> played a Favor on you. Select a card from your hand to give them.
+            </p>
+            
+            <div className="flex gap-4 overflow-x-auto pb-4 px-4 justify-left">
+              {myHand.map(card => (
+                <motion.div 
+                  key={card.id} 
+                  whileHover={{ scale: 1.05, y: -10 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => submitFavorCard(roomId, card.id, favorRequest.sourceUserId)}
+                  className="shrink-0 cursor-pointer"
+                >
+                  <CardFront card={card} animate={false} className="w-36 h-60  rounded-lg" />
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

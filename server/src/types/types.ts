@@ -51,6 +51,17 @@ export enum CardType {
 }
 
 /**
+ * Represents the types of card requests that can be made when a player plays a card that requires additional input.
+ */
+export enum CardRequestType {
+  Favor = 'Favor',
+  Two_Card_Combo = 'Two_Card_Combo',
+  Three_Card_Combo = 'Three_Card_Combo',
+  Replace_Exploding_Kitten = 'Replace_Exploding_Kitten',
+}
+
+
+/**
  * Fullstack representation of a Card, used for communication between frontend and backend.
  */
 export interface Card {

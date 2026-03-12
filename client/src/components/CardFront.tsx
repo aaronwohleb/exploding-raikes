@@ -13,20 +13,26 @@ import seeTheFutureBase from '../assets/seeTheFutureBase.png';
 import shuffleBase from '../assets/shuffleBase.png';
 import skipBase from '../assets/skipBase.png';
 import syntaxBugBase from '../assets/syntaxBugBase.png';
+import legacyBugBase from '../assets/legacyBugBase.png';
+import heisenbugBase from '../assets/heisenbugBase.png';
+import favorBase from '../assets/favorBase.png';
 
 // Map card types to their images
 const cardImageMap: Record<string, string> = {
   'Attack': attackBase,
-  'Bathroom_Drain_Bug': bathroomDrainBugBase,
+  'Beard_Cat': bathroomDrainBugBase,
   'Defuse': defuseBase,
   'Exploding_Cards': explodingCardsmock,
-  'Exploding_Kauffman': explodingKauffmanBase,
-  'Mega_Bug': megaBugBase,
+  'Exploding_Kitten': explodingKauffmanBase,
+  'Catermelon': megaBugBase,
   'Nope': nopeBase,
   'See_the_Future': seeTheFutureBase,
   'Shuffle': shuffleBase,
   'Skip': skipBase,
-  'Syntax_bug': syntaxBugBase,
+  'Rainbow_Ralphing_Cat': syntaxBugBase,
+  'Favor': favorBase,
+  'Hairy_Potato_Cat': legacyBugBase,
+  'Tacocat': heisenbugBase,
 };
 
 //Card Front proops, all importnat stuff, save for the ? which are all optional extras
