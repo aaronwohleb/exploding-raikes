@@ -1,5 +1,8 @@
 import { Server, Socket } from 'socket.io';
 import { processPlayerLeave } from '../controllers/lobbyController';
+import { GameManager } from '../game-runner/GameManager';
+import { Lobby } from '../types/Lobby';
+import { Player } from '../game-runner/Player';
 
 export function setupLobbySockets(io: Server) {
   io.on('connection', (socket: Socket) => {
@@ -10,7 +13,6 @@ export function setupLobbySockets(io: Server) {
       const { roomId, userId } = data;
       socket.join(`lobby:${roomId}`);
       socket.data.roomId = roomId;
-      socket.data.userId = userId;
       console.log(`Socket ${socket.id} joined lobby room: ${roomId}`);
     });
 
@@ -37,5 +39,34 @@ export function setupLobbySockets(io: Server) {
         }
       }
     });
+
+  // Listen for 'start_game' (matches frontend)
+  socket.on('start_game', async (data) => {
+  // Destructure the data from the event
+  console.log("START GAME", data);
+  const { roomId } = data;
+
+  // Fetch the lobby and its players
+  try {
+    const lobby = await Lobby.findOne({ code: roomId.toUpperCase() }).populate('players', 'username email');
+    if (!lobby) return;
+    lobby.status = 'starting';
+    await lobby.save();
+
+    const players: Player[] = [];
+    // Create Player instances and assign playerNums based on the order in the lobby
+    lobby.players.forEach((player: any, i: number) => {
+          players.push(new Player(player.username, i, player._id.toString()));
+        });
+
+    // Create the game and emit the initial hands to each player
+    GameManager.getInstance().createGame(roomId, players);
+
+
+    io.to(`lobby:${lobby.code}`).emit('game_started', { roomId });
+  } catch (e) {
+    console.error(e);
+  }
+});
   });
 }

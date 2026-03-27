@@ -1,4 +1,4 @@
-import { Card, CardType } from '../types/types';
+import { Card, CardType, CardRequestType } from '../types/types';
 import { Game } from './Game';
 
 /**
@@ -8,23 +8,30 @@ export class Player {
 
     private readonly _name: string;
     private readonly _playerNum: number;
+    private readonly _userId: string;
 
     private _hand: Card[];
     private _selectedCards: Card[];
     private _hasNope: boolean;
+
+    // Temporarily holds exploding kitten so cardId is preserved while waiting for slider input on where to insert it back into the deck
+    private _pendingDefuseKitten: Card | null;
     
     /**
      * Constructs a new Player object with a given name and number - also intializes empty hand and selcted cards arrays.
      * 
      * @param name the player's name
      * @param playerNum the player's numbner in play order
+     * @param userId the player's user ID
      */
-    public constructor(name: string, playerNum: number) {
+    public constructor(name: string, playerNum: number, userId: string) {
         this._name = name;
         this._playerNum = playerNum;
+        this._userId = userId;
         this._hand = [];
         this._selectedCards = [];
         this._hasNope = false;
+        this._pendingDefuseKitten = null;
     }
 
     /**
@@ -32,30 +39,33 @@ export class Player {
      * 
      * @param game the game state before the draw
      */
-    public drawCard(game: Game): Card {
+    public drawCard(game: Game): {drawnCard: Card; exploded: boolean; defusePending?: boolean} {
         //TODO: Determine if async or if using websockets
         //NOTE: Cannot return Card if async
         //TODO: Add undefined checking for shift
+
+        if (game.activePlayer !== this) {
+            throw new Error("It is not your turn");
+        }
+
         let drawnCard: Card = game.drawDeck.deck.shift()!;
+        let exploded = false;
+
+        console.log(`${this.name} drew a ${drawnCard.type.toString()} card`);
 
         if (drawnCard.type == CardType.Exploding_Kitten) {
-            let hasDefuse: boolean = false;
-            let currIndex: number = 0;
+            let defuseIndex = this.hand.findIndex(c => c.type === CardType.Defuse);
 
-            while (!hasDefuse && currIndex < this.hand.length) {
-                if (this.hand[currIndex].type == CardType.Defuse) {
-                    hasDefuse = true;
-                }
-            }
+            if (defuseIndex !== -1) {
+                let defuse: Card = this.hand.splice(defuseIndex, 1)[0];
+                game.discardPile.pile.push(defuse);
 
-            if (hasDefuse) {
-                let defuse: Card = this.hand.splice(currIndex, 1)[0];
-                game.discardPile.pile.unshift(defuse);
-                //TODO: Query FrontEnd for choice
-                let choice: number = 0; // temporary
-                game.drawDeck.replaceExplodingKitten(drawnCard, choice);
+                this.pendingDefuseKitten = drawnCard; // Store the drawn kitten while waiting for slider input
+                
+                return {drawnCard, exploded: false, defusePending: true};
             } else {
                 this.lose(game);
+                exploded = true;
             }
 
         } else {
@@ -65,7 +75,36 @@ export class Player {
             this.hand.push(drawnCard);
         }
 
-        return drawnCard;
+        // Progress turns
+        game.numTurns--;
+        if (game.numTurns <= 0) {
+            this.endTurn(game);
+        }
+
+        return {drawnCard, exploded};
+    }
+
+    /**
+     * Called by the socket once the user selects a slider position.
+     */
+    public resolveDefuse(game: Game, insertIndex: number) {
+        if (game.activePlayer !== this) throw new Error("It is not your turn!");
+        
+        if (!this.pendingDefuseKitten) {
+            throw new Error("No Exploding Kitten is currently pending defusal!");
+        }
+
+        // Put the original kitten back into the deck
+        game.drawDeck.replaceExplodingKitten(this.pendingDefuseKitten, insertIndex);
+
+        // Clear the pending kitten so it can't be reused
+        this.pendingDefuseKitten = null;
+
+        // progress turn
+        game.numTurns--;
+        if (game.numTurns <= 0) {
+            this.endTurn(game);
+        }
     }
 
     /**
@@ -108,33 +147,36 @@ export class Player {
      * Handles logic for multi-card combos. Designed to hand off card functionality to playCard() for single-card plays.
      * 
      * @param game the game state
-     * @returns the card info necessary for the play
+     * @returns an array of cards for STF, or the type of request needed to send to the frontend for plays like Favor or Combos and 
+     * the last played card for frontend display purposes, if applicable
      */
-    public playSelectedCards(game: Game): {stolenCard?: Card; futureCards?: Card[]} {
-        switch (this.selectedCards.length) {
+    public playSelectedCards(game: Game, cardIds: number[]): {futureCards?: Card[]; cardRequest?: CardRequestType; lastPlayedCard?: Card} {
+        if (game.activePlayer !== this) {
+            throw new Error("It is not your turn!");
+        }
+        const cardsToPlay = this.hand.filter(c => cardIds.includes(c.id));
+
+        if (cardsToPlay.length !== cardIds.length) {
+            console.error("One or more selected cards were not found in the player's hand.");
+            return { };
+        }
+
+        switch (cardsToPlay.length) {
             case 1:
-                //TODO: Query frontend for target if favor (Maybe targeted attack later)
-                let target: Player = this /* target of card, if applicable */;
-                return this.playCard(game, target);
+                return this.playCard(cardsToPlay[0], game);
 
             case 2:
-                //TODO: Do two-card combo
-                for (let card of this.selectedCards) {
-                    this.hand = this.hand.filter(currCard => currCard !== card);
-                    game.discardPile.pile.unshift(card);
-                }
-                // Stolen card
-                return {};
+                // Two Card Combo
+                if (cardsToPlay[0].type === cardsToPlay[1].type) {
+                this.discardCards(cardsToPlay, game);
+                return { cardRequest: CardRequestType.Two_Card_Combo, lastPlayedCard: cardsToPlay[0] };
+            }
 
             case 3: 
-                //TODO: Do three-card combo
-                for (let card of this.selectedCards) {
-                    this.hand = this.hand.filter(currCard => currCard !== card);
-                    game.discardPile.pile.unshift(card);
-                }
-                // Stolen card
-                return {};
-
+                if (cardsToPlay[0].type === cardsToPlay[1].type && cardsToPlay[0].type === cardsToPlay[2].type) {
+                this.discardCards(cardsToPlay, game);
+                return { cardRequest: CardRequestType.Three_Card_Combo, lastPlayedCard: cardsToPlay[0] };
+            }
             case 5:
                 //TODO: Do five-card combo (Later)
                 for (let card of this.selectedCards) {
@@ -152,75 +194,42 @@ export class Player {
     /**
      * This function applies the Card's effects to the game.
      * 
+     * @param card the card being played
      * @param game the game being played on which to apply the Card's effects
-     * @param target the target of the Card's effects NOTE: for no target, the target is the current player
-     * @returns an array of cards for STF, one card for favor. For cards that require no info, return neither
+     * @returns an array of cards for STF, or the type of request needed to send to the frontend for plays like Favor or Combos and 
+     * the last played card for frontend display purposes, if applicable
      */
-    public playCard(game: Game, target: Player): {stolenCard?: Card; futureCards?: Card[]} {
-        // play card with a target
-        let returnSet: {stolenCard?: Card; futureCards?: Card[]} = {};
-        let playedCard: Card = this.selectedCards.splice(0, 1)[0];
-        switch (playedCard.type) {
+    public playCard(card: Card, game: Game): {futureCards?: Card[]; cardRequest?: CardRequestType; lastPlayedCard?: Card} {
+
+        const illegalSingles: CardType[] = [
+            CardType.Beard_Cat, CardType.Catermelon, CardType.Hairy_Potato_Cat,
+            CardType.Rainbow_Ralphing_Cat, CardType.Tacocat, CardType.Defuse, CardType.Exploding_Kitten
+        ];
+
+        if (illegalSingles.includes(card.type)) {
+            console.warn(`You cannot play ${card.type} alone`);
+            return { };
+        }
+
+        // Handle card effects and discard card
+        this.discardCards([card], game);
+
+        switch (card.type) {
             case CardType.Attack: 
                 // NOTE: game.numTurns MUST be 0 before a player's chance to play/draw ends
                 if (game.numTurns > 1) {
-                    // TODO: store attack turns statically so that they can be added after consecutive turns
-                    game.numTurns--;
+                    const storedAttacks = game.numTurns - 1;
+                    this.endTurn(game);
+                    game.numTurns = 2 + storedAttacks; // Set next player turns to attack + any stored attacks
                     console.log(`${game.activePlayer} just attacked, but they still have more turns. Successfully stored attack info`);
                 } else {
-                    game.numTurns = 2 /* + stored attacks */
-                    try {
-                        let currPlayer: Player = game.activePlayer
-                        game.activePlayer = game.playerList[game.playerList.indexOf(game.activePlayer) + 1];
-                        console.log(`${currPlayer} successfully attacked and ended their turn`);
-                    } catch (error: unknown) {
-                        if (error instanceof Error) {
-                            // Index out of bounds error: loop playerList
-                            let currPlayer: Player = game.activePlayer
-                            game.activePlayer = game.playerList[0];
-                            console.log(`${currPlayer} successfully attacked and ended their turn`);
-                        } else {
-                            console.error("Unkown error occured in playCard{Attack}");
-                        }
-                    }
+                    this.endTurn(game);
+                    game.numTurns = 2 
                 }
                 break;  
-                
-            case CardType.Beard_Cat:
-                console.warn("You cannot play CardType.Beard_Cat alone");
-                break;
-
-            case CardType.Catermelon:
-                console.warn("You cannot play CardType.Catermelon alone");
-                break;
-
-            case CardType.Hairy_Potato_Cat:
-                console.warn("You cannot play CardType.Hairy_Potato_Cat alone");
-                break;
-
-            case CardType.Rainbow_Ralphing_Cat:
-                console.warn("You cannot play CardType.Rainbow_Ralphing_Cat alone");
-                break;
-
-            case CardType.Tacocat:
-                console.warn("You cannot play CardType.Tacocat alone");
-                break;
-
-            case CardType.Defuse:
-                console.warn("You cannot play CardType.Defuse alone");
-                break;
-
-            case CardType.Exploding_Kitten:
-                console.warn("You cannot play CardType.Exploding_Kitten");
-                break;
 
             case CardType.Favor:
-                //TODO: Query Frontend for player selection (both target and card)
-                const receievedCard = target.hand.splice(0, 1)[0]; // temporary
-                game.activePlayer.hand.push(receievedCard);
-                console.log(`${game.activePlayer.name} succesfully asked a favor from ${target.name} and received a ${receievedCard.type.toString}`);
-                returnSet = {stolenCard: receievedCard};
-                break;
+                return { cardRequest: CardRequestType.Favor, lastPlayedCard: card };
                 
             case CardType.Nope:
                 //TODO: Implement before R2
@@ -228,7 +237,7 @@ export class Player {
             case CardType.See_the_Future:
                 let returnCards: Card[] = game.drawDeck.seeFuture(3);
                 console.log(`${game.activePlayer.name} just saw the future (x3)`);
-                returnSet = {futureCards: returnCards};
+                return {futureCards: returnCards, lastPlayedCard: card};
 
             case CardType.Shuffle:
                 game.drawDeck.shuffleDeck();
@@ -237,29 +246,55 @@ export class Player {
 
             case CardType.Skip:
                 game.numTurns--;
-                if (game.numTurns == 0) {
-                    try {
-                        let currPlayer: Player = game.activePlayer
-                        game.activePlayer = game.playerList[game.playerList.indexOf(game.activePlayer) + 1];
-                        console.log(`${currPlayer} successfully skipped and ended their turn`);
-                    } catch (error: unknown) {
-                        if (error instanceof Error) {
-                            // Index out of bounds error: loop playerList
-                            let currPlayer: Player = game.activePlayer
-                            game.activePlayer = game.playerList[0];
-                            console.log(`${currPlayer} successfully skipped and ended their turn`);
-                        } else {
-                            console.error("Unkown error occured in playCard{Skip}");
-                        }
-                    }
+                if (game.numTurns <= 0) {
+                    this.endTurn(game);
                 }
                 console.log(`${game.activePlayer.name} has skipped a turn`);
                 break;
 
         }
-        this.hand.filter(card => card !== playedCard);
-        // Empty if no card info, contains card for Favor, array for STF
-        return returnSet;
+        // Return the valid card play for frontend to display, even if there is no additional info to send
+        return {lastPlayedCard: card};
+    }
+
+    // --- RESOLUTION FUNCTIONS FOR FRONTEND QUERIES ---
+
+    /**
+     * Resolves a Favor: Target player actively chose a card to give to this player.
+     */
+    public resolveFavor(target: Player, givenCardId: number): Card {
+        const stolenCard = target.removeCardFromHand(givenCardId);
+        this.hand.push(stolenCard);
+        return stolenCard;
+    }
+
+    /**
+     * Resolves a Two Card Combo: This player steals a random card from the target.
+     */
+    public resolveTwoCardCombo(target: Player): Card {
+        if (target.hand.length === 0) throw new Error("Target player has no cards.");
+        
+        const randomIndex = Math.floor(Math.random() * target.hand.length);
+        const stolenCard = target.hand.splice(randomIndex, 1)[0];
+        
+        this.hand.push(stolenCard);
+        return stolenCard;
+    }
+
+    /**
+     * Resolves a Three Card Combo: This player asks the target for a specific card type.
+     */
+    public resolveThreeCardCombo(target: Player, requestedType: CardType): Card | null {
+        const targetCardIndex = target.hand.findIndex(c => c.type === requestedType);
+        
+        if (targetCardIndex !== -1) {
+            const stolenCard = target.hand.splice(targetCardIndex, 1)[0];
+            this.hand.push(stolenCard);
+            return stolenCard;
+        }
+        
+        // Return null if the target didn't have the card
+        return null; 
     }
     
     /**
@@ -268,11 +303,47 @@ export class Player {
      * @param game the game state
      */
     public lose(game: Game) {
+        // Add all of the player's cards to the discard pile 
         game.discardPile.pile.unshift(...this.hand);
-        // Remove the player from the playerList
+        // Remove the player from the playerList and end their turn
+        this.endTurn(game);
         game.playerList = game.playerList.filter(player => player !== this);
-        game.numTurns = 0;
         console.log(`${this._name} has lost the game and been successfully removed from the playerList.`);
+    }
+
+    /**
+     * Removes the played cards from the player's hand and adds them to the discard pile.
+     * @param cards cards to discard
+     * @param game the game state
+     */
+    private discardCards(cards: Card[], game: Game) {
+        const cardIds = cards.map(c => c.id);
+        this.hand = this.hand.filter(c => !cardIds.includes(c.id));
+        game.discardPile.pile.push(...cards);
+    }
+
+    /**
+     * Helper function to remove a players card by id and return it, used for resolving favors and combos.
+     * @param cardId card Id to remove from hand
+     * @returns removed card
+     */
+    private removeCardFromHand(cardId: number): Card {
+        const index = this.hand.findIndex(c => c.id === cardId);
+        if (index === -1) throw new Error("Card not found in hand.");
+        return this.hand.splice(index, 1)[0];
+    }
+
+    /**
+     * Ends the player's turn and progresses to the next player. 
+     * @param game 
+     */
+    private endTurn(game: Game) {
+        let currentIndex = game.playerList.indexOf(game.activePlayer);
+        let nextIndex = (currentIndex + 1) % game.playerList.length;
+        game.activePlayer = game.playerList[nextIndex];
+
+        game.numTurns = 1; // Reset turns for the next player
+        console.log(`Turn ended. It is now ${game.activePlayer.name}'s turn.`);
     }
 
     /**
@@ -310,12 +381,25 @@ export class Player {
     }
 
     /**
+     * Gets the Player's user id.
+     * 
+     * @return the Player's user id
+     */
+    public get userId(): string {
+        return this._userId;
+    }
+
+    /**
      * Gets the Player's hand.
      * 
      * @return the Player's hand
      */
     public get hand(): Card[] {
         return this._hand;
+    }
+
+    public get pendingDefuseKitten(): Card | null {
+        return this._pendingDefuseKitten;
     }
 
     /**
@@ -361,5 +445,9 @@ export class Player {
      */
     public set hasNope(value: boolean) {
         this._hasNope = value;
+    }
+
+    public set pendingDefuseKitten(value: Card | null) {
+        this._pendingDefuseKitten = value;
     }
 }

@@ -20,20 +20,14 @@ export class Game {
      */
     public constructor(playerList: Player[]) {
         this._playerList = playerList;
-        this._drawDeck = new DrawDeck();
+        this._drawDeck = new DrawDeck(this);
         this._discardPile = new DiscardPile();
         this._activePlayer = this.playerList[0];
         this._numTurns = 1;
 
-        this.dealCards();
     }
 
-    /**
-     * Helper function to deal a starting hand to each player. A starting hand should have 7 non-defuse, non-exploding kitten cards, and 1 defuse.
-     */
-    public dealCards() {
-        //Deal starting hands
-    }
+
 
     /**
      * Gets the game's playerList.
