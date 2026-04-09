@@ -67,5 +67,14 @@ export enum CardRequestType {
 export interface Card {
   id: number;
   name: string;
-   type: CardType;
+  type: CardType;
+}
+
+/**
+ * Backend representation of a pending action, utilized to make sure actions don't happen until nope plays have been resolved.
+ */
+export interface pendingAction { 
+  playerId: string;
+  cards: Card[]; 
+  type: CardRequestType | 'Standard' 
 }

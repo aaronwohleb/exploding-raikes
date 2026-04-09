@@ -44,10 +44,8 @@ export function setupGameSockets(io: Server) {
     
     /**
      * Draw Card. Fired when a player wants to draw a card, ending their turn.
-     * 
-     * Expects: { roomId: string }
-     * 
-     * Emits back to THIS player:      receive_card      — their updated hand
+     * * Expects: { roomId: string }
+     * * Emits back to THIS player:      receive_card      — their updated hand
      * Broadcasts to ALL in the room:  player_draws_card — who drew (no card details)
      */
     socket.on('draw_card', (data: { roomId: string, userId: string }) => {
@@ -147,10 +145,8 @@ export function setupGameSockets(io: Server) {
 
     /**
      * PLAY CARD. Fired when a player wants to play one or more cards from their hand.
-     * 
-     * Expects: { roomId: string, cardIds: number[] }
-     * 
-     * Broadcasts to ALL in the room: player_plays_card — what was played
+     * * Expects: { roomId: string, cardIds: number[] }
+     * * Broadcasts to ALL in the room: player_plays_card — what was played
      * Emits back to THIS player:     see_the_future    — only if See the Future was played
      */
     socket.on('play_card', (data: { roomId: string, cardIds: number[], userId: string }) => {
@@ -170,44 +166,51 @@ export function setupGameSockets(io: Server) {
       }
 
       try {
-        const result = player.playSelectedCards(game, cardIds );
+        // Logic for buffering plays for Nope
+        const cardsToPlay = player.hand.filter(c => cardIds.includes(c.id));
+        player.selectedCards = cardsToPlay;
+        
+        if (!player.checkMove()) {
+          socket.emit('play_error', { message: "Invalid move." });
+          return;
+        }
 
-            // Broadcast to all players that this player played cards
+        // Stage 1: Prepare the play (removes from hand)
+        const play = player.preparePlay(cardIds);
+        game.pendingAction = { player: player, cards: play.cards, type: play.type };
 
-          io.to(`lobby:${roomId}`).emit('player_plays_cards', {
-            playerId: userId,
-            playedCards: result.lastPlayedCard, 
-          });
+        // Inform everyone the window is open
+        io.to(`lobby:${roomId}`).emit('player_plays_cards', {
+          playerId: userId,
+          playedCards: play.cards[0], 
+        });
 
         socket.emit('update_hand', { fullHand: player.hand });
 
-        // --- INTERACTIVE ACTIONS (Favor, Combos) ---
-        if (result.cardRequest === CardRequestType.Favor || result.cardRequest === CardRequestType.Two_Card_Combo || result.cardRequest === CardRequestType.Three_Card_Combo) {
-          // Ask for a target
-          socket.emit('action_requires_target', { 
-            actionType: result.cardRequest
-          });
-          io.to(`lobby:${roomId}`).emit('game_state_update', {
-          activeUserId: game.activePlayer.userId,
-          topCard: result.lastPlayedCard,
-          deckCount: game.drawDeck.deck.length
-        });
-          return; 
-        }
-
-        // --- INSTANT ACTIONS (Skip, Shuffle, STF, etc.) ---
-        if (result.futureCards) {
-          socket.emit('see_the_future', { cards: result.futureCards });
-        }
-
-        io.to(`lobby:${roomId}`).emit('game_state_update', {
-          activeUserId: game.activePlayer.userId,
-          topCard: result.lastPlayedCard,
-          deckCount: game.drawDeck.deck.length
-        });
+        startNopeTimer(game, roomId);
 
       } catch (error) {
         console.error("Server failed to process play_card:", error);
+      }
+    });
+
+    socket.on('play_nope', (data: { roomId: string, userId: string, cardId: number }) => {
+      const { roomId, userId, cardId } = data;
+      const game = GameManager.getInstance().getGame(roomId);
+      if (!game || !game.pendingAction) return;
+
+      const player = game.playerList.find(p => p.userId === userId);
+      if (!player) return;
+
+      const nopeCard = player.hand.find(c => c.id === cardId && c.type === CardType.Nope);
+      if (nopeCard) {
+          player.hand = player.hand.filter(c => c.id !== cardId);
+          game.nopeStack.push(nopeCard);
+          
+          io.to(`lobby:${roomId}`).emit('action_resolved', { message: `${player.name} played a NOPE!` });
+          socket.emit('update_hand', { fullHand: player.hand });
+          
+          startNopeTimer(game, roomId);
       }
     });
 
@@ -345,5 +348,44 @@ export function setupGameSockets(io: Server) {
         targetSocket.emit('update_hand', { fullHand: targetPlayer.hand });
       }
     });
+  }
+
+  function startNopeTimer(game: Game, roomId: string) {
+    if (game.nopeTimer) clearTimeout(game.nopeTimer);
+
+    game.nopeTimer = setTimeout(() => {
+        const action = game.pendingAction;
+        if (!action) return;
+
+        const isNoped = game.nopeStack.length % 2 !== 0;
+
+        if (isNoped) {
+            game.discardPile.addCards(action.cards);
+            game.discardPile.addCards(game.nopeStack);
+            io.to(`lobby:${roomId}`).emit('action_resolved', { message: "Action was Noped!" });
+        } else {
+            const result = action.player.executeFinalEffect(action.cards, game);
+            game.discardPile.addCards(action.cards);
+            game.discardPile.addCards(game.nopeStack);
+
+            if (result.futureCards || result.cardRequest) {
+                io.in(`lobby:${roomId}`).fetchSockets().then(sockets => {
+                    const s = sockets.find(s => s.data.userId === action.player.userId);
+                    if (s) {
+                        if (result.futureCards) s.emit('see_the_future', { cards: result.futureCards });
+                        if (result.cardRequest) s.emit('action_requires_target', { actionType: result.cardRequest });
+                    }
+                });
+            }
+        }
+
+        game.clearPendingAction();
+        io.to(`lobby:${roomId}`).emit('game_state_update', {
+            activeUserId: game.activePlayer.userId,
+            topCard: game.discardPile.topCard,
+            deckCount: game.drawDeck.deck.length
+        });
+
+    }, 5000);
   }
 }

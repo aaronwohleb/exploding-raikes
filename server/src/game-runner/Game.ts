@@ -1,6 +1,7 @@
 import { Player } from './Player';
 import { DrawDeck } from './DrawDeck';
 import { DiscardPile } from './DiscardPile';
+import { Card, CardRequestType, pendingAction } from '../types/types';
 
 /**
  * Responsible for holding the game state and running the game.
@@ -13,6 +14,20 @@ export class Game {
     private _activePlayer: Player;
     private _numTurns: number;
 
+    public pendingAction: pendingAction | null = null;
+    public nopeStack: Card[] = [];
+    public nopeTimer: NodeJS.Timeout | null = null;
+
+    /**
+     * Resets the game state after a Nope window closes or an action is resolved.
+     */
+    public clearPendingAction() {
+        if (this.nopeTimer) clearTimeout(this.nopeTimer);
+        this.pendingAction = null;
+        this.nopeStack = [];
+        this.nopeTimer = null;
+    }
+
     /**
      * Constructs a new Game object when called containing a player list and a default game state.
      * 
@@ -24,7 +39,7 @@ export class Game {
         this._discardPile = new DiscardPile();
         this._activePlayer = this.playerList[0];
         this._numTurns = 1;
-
+        this.pendingAction = null;
     }
 
 

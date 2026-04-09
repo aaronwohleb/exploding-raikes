@@ -125,7 +125,7 @@ export class Player {
                     CardType.Exploding_Kitten,
                 ];
 
-                return illegalSingles.includes(this.selectedCards[0].type);
+                return !illegalSingles.includes(this.selectedCards[0].type);
 
             case 2:
                 return this.selectedCards[0].type === this.selectedCards[1].type;
@@ -144,76 +144,32 @@ export class Player {
     }
 
     /**
-     * Handles logic for multi-card combos. Designed to hand off card functionality to playCard() for single-card plays.
-     * 
-     * @param game the game state
-     * @returns an array of cards for STF, or the type of request needed to send to the frontend for plays like Favor or Combos and 
-     * the last played card for frontend display purposes, if applicable
+     * Stage 1: Validate and "lock" cards. 
+     * Call this after your existing checkMove() passes in the socket.
      */
-    public playSelectedCards(game: Game, cardIds: number[]): {futureCards?: Card[]; cardRequest?: CardRequestType; lastPlayedCard?: Card} {
-        if (game.activePlayer !== this) {
-            throw new Error("It is not your turn!");
-        }
+    public preparePlay(cardIds: number[]): { cards: Card[], type: CardRequestType | 'Standard' } {
         const cardsToPlay = this.hand.filter(c => cardIds.includes(c.id));
-
         if (cardsToPlay.length !== cardIds.length) {
-            console.error("One or more selected cards were not found in the player's hand.");
-            return { };
+            throw new Error("Cards not in hand");
         }
 
-        switch (cardsToPlay.length) {
-            case 1:
-                return this.playCard(cardsToPlay[0], game);
-
-            case 2:
-                // Two Card Combo
-                if (cardsToPlay[0].type === cardsToPlay[1].type) {
-                this.discardCards(cardsToPlay, game);
-                return { cardRequest: CardRequestType.Two_Card_Combo, lastPlayedCard: cardsToPlay[0] };
-            }
-
-            case 3: 
-                if (cardsToPlay[0].type === cardsToPlay[1].type && cardsToPlay[0].type === cardsToPlay[2].type) {
-                this.discardCards(cardsToPlay, game);
-                return { cardRequest: CardRequestType.Three_Card_Combo, lastPlayedCard: cardsToPlay[0] };
-            }
-            case 5:
-                //TODO: Do five-card combo (Later)
-                for (let card of this.selectedCards) {
-                    this.hand = this.hand.filter(currCard => currCard !== card);
-                    game.discardPile.pile.unshift(card);
-                }
-                // Discard draw
-                return {};
-                
+        let type: CardRequestType | 'Standard' = 'Standard';
+        if (cardsToPlay.length === 2) {
+            type = CardRequestType.Two_Card_Combo;
+        } else if (cardsToPlay.length === 3) {
+            type = CardRequestType.Three_Card_Combo;
+        } else if (cardsToPlay[0].type === CardType.Favor) {
+            type = CardRequestType.Favor;
         }
-        console.error("This card play was invalid. (Not 1, 2, 3, 5 cards)");
-        return {};
+
+        // Remove from hand so they can't be played again while the timer runs
+        this.hand = this.hand.filter(c => !cardIds.includes(c.id));
+        
+        return { cards: cardsToPlay, type };
     }
 
-    /**
-     * This function applies the Card's effects to the game.
-     * 
-     * @param card the card being played
-     * @param game the game being played on which to apply the Card's effects
-     * @returns an array of cards for STF, or the type of request needed to send to the frontend for plays like Favor or Combos and 
-     * the last played card for frontend display purposes, if applicable
-     */
-    public playCard(card: Card, game: Game): {futureCards?: Card[]; cardRequest?: CardRequestType; lastPlayedCard?: Card} {
-
-        const illegalSingles: CardType[] = [
-            CardType.Beard_Cat, CardType.Catermelon, CardType.Hairy_Potato_Cat,
-            CardType.Rainbow_Ralphing_Cat, CardType.Tacocat, CardType.Defuse, CardType.Exploding_Kitten
-        ];
-
-        if (illegalSingles.includes(card.type)) {
-            console.warn(`You cannot play ${card.type} alone`);
-            return { };
-        }
-
-        // Handle card effects and discard card
-        this.discardCards([card], game);
-
+    public executeFinalEffect(cards: Card[], game: Game): {futureCards?: Card[]; cardRequest?: CardRequestType; lastPlayedCard?: Card} {
+        const card = cards[0];
         switch (card.type) {
             case CardType.Attack: 
                 // NOTE: game.numTurns MUST be 0 before a player's chance to play/draw ends
@@ -230,9 +186,6 @@ export class Player {
 
             case CardType.Favor:
                 return { cardRequest: CardRequestType.Favor, lastPlayedCard: card };
-                
-            case CardType.Nope:
-                //TODO: Implement before R2
 
             case CardType.See_the_Future:
                 let returnCards: Card[] = game.drawDeck.seeFuture(3);
