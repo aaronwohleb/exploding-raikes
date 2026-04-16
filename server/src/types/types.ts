@@ -69,11 +69,3 @@ export interface Card {
   name: string;
    type: CardType;
 }
-
-/**
- * Represents an action that is currently pending resolution (during the Nope window).
- */
-export interface pendingAction {
-  playerId: string;
-  cards: Card[];
-}
