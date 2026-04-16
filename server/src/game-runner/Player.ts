@@ -19,8 +19,7 @@ export class Player {
     
     /**
      * Constructs a new Player object with a given name and number - also intializes empty hand and selcted cards arrays.
-     * 
-     * @param name the player's name
+     * * @param name the player's name
      * @param playerNum the player's numbner in play order
      * @param userId the player's user ID
      */
@@ -36,8 +35,7 @@ export class Player {
 
     /**
      * This function draws a card from the DrawDeck and adds it to this player's hand. Handles Exploding Kitten draws as well.
-     * 
-     * @param game the game state before the draw
+     * * @param game the game state before the draw
      */
     public drawCard(game: Game): {drawnCard: Card; exploded: boolean; defusePending?: boolean} {
         //TODO: Determine if async or if using websockets
@@ -109,8 +107,7 @@ export class Player {
 
     /**
      * Determines if the SelectedCards are legal to play. Particularly useful for multi-card plays, but will also stop plays like 1 Beard_Cat.
-     * 
-     * @returns true if legal, false if not
+     * * @returns true if legal, false if not
      */
     public checkMove(): boolean {
         switch (this.selectedCards.length) {
@@ -144,78 +141,21 @@ export class Player {
     }
 
     /**
-     * Handles logic for multi-card combos. Designed to hand off card functionality to playCard() for single-card plays.
-     * 
-     * @param game the game state
-     * @returns an array of cards for STF, or the type of request needed to send to the frontend for plays like Favor or Combos and 
-     * the last played card for frontend display purposes, if applicable
+     * Executes the actual effect of a card play after the Nope window has expired.
      */
-    public playSelectedCards(game: Game, cardIds: number[]): {futureCards?: Card[]; cardRequest?: CardRequestType; lastPlayedCard?: Card} {
-        if (game.activePlayer !== this) {
-            throw new Error("It is not your turn!");
-        }
-        const cardsToPlay = this.hand.filter(c => cardIds.includes(c.id));
-
-        if (cardsToPlay.length !== cardIds.length) {
-            console.error("One or more selected cards were not found in the player's hand.");
-            return { };
+    public executeFinalEffect(game: Game, cards: Card[]): {futureCards?: Card[]; cardRequest?: CardRequestType; lastPlayedCard?: Card} {
+        
+        // Handle Multi-card combos first
+        if (cards.length === 2) {
+             return { cardRequest: CardRequestType.Two_Card_Combo, lastPlayedCard: cards[0] };
+        } else if (cards.length === 3) {
+             return { cardRequest: CardRequestType.Three_Card_Combo, lastPlayedCard: cards[0] };
         }
 
-        switch (cardsToPlay.length) {
-            case 1:
-                return this.playCard(cardsToPlay[0], game);
-
-            case 2:
-                // Two Card Combo
-                if (cardsToPlay[0].type === cardsToPlay[1].type) {
-                this.discardCards(cardsToPlay, game);
-                return { cardRequest: CardRequestType.Two_Card_Combo, lastPlayedCard: cardsToPlay[0] };
-            }
-
-            case 3: 
-                if (cardsToPlay[0].type === cardsToPlay[1].type && cardsToPlay[0].type === cardsToPlay[2].type) {
-                this.discardCards(cardsToPlay, game);
-                return { cardRequest: CardRequestType.Three_Card_Combo, lastPlayedCard: cardsToPlay[0] };
-            }
-            case 5:
-                //TODO: Do five-card combo (Later)
-                for (let card of this.selectedCards) {
-                    this.hand = this.hand.filter(currCard => currCard !== card);
-                    game.discardPile.pile.unshift(card);
-                }
-                // Discard draw
-                return {};
-                
-        }
-        console.error("This card play was invalid. (Not 1, 2, 3, 5 cards)");
-        return {};
-    }
-
-    /**
-     * This function applies the Card's effects to the game.
-     * 
-     * @param card the card being played
-     * @param game the game being played on which to apply the Card's effects
-     * @returns an array of cards for STF, or the type of request needed to send to the frontend for plays like Favor or Combos and 
-     * the last played card for frontend display purposes, if applicable
-     */
-    public playCard(card: Card, game: Game): {futureCards?: Card[]; cardRequest?: CardRequestType; lastPlayedCard?: Card} {
-
-        const illegalSingles: CardType[] = [
-            CardType.Beard_Cat, CardType.Catermelon, CardType.Hairy_Potato_Cat,
-            CardType.Rainbow_Ralphing_Cat, CardType.Tacocat, CardType.Defuse, CardType.Exploding_Kitten
-        ];
-
-        if (illegalSingles.includes(card.type)) {
-            console.warn(`You cannot play ${card.type} alone`);
-            return { };
-        }
-
-        // Handle card effects and discard card
-        this.discardCards([card], game);
-
+        // Single card logic using your ORIGINAL switch block
+        const card = cards[0];
         switch (card.type) {
-            case CardType.Attack: 
+            case CardType.Attack:
                 // NOTE: game.numTurns MUST be 0 before a player's chance to play/draw ends
                 if (game.numTurns > 1) {
                     const storedAttacks = game.numTurns - 1;
@@ -224,15 +164,16 @@ export class Player {
                     console.log(`${game.activePlayer} just attacked, but they still have more turns. Successfully stored attack info`);
                 } else {
                     this.endTurn(game);
-                    game.numTurns = 2 
+                    game.numTurns = 2;
                 }
-                break;  
+                break;
 
             case CardType.Favor:
                 return { cardRequest: CardRequestType.Favor, lastPlayedCard: card };
-                
+
             case CardType.Nope:
-                //TODO: Implement before R2
+                // Logically shouldn't reach here as executeFinalEffect is for the action being noped
+                break;
 
             case CardType.See_the_Future:
                 let returnCards: Card[] = game.drawDeck.seeFuture(3);
@@ -251,10 +192,9 @@ export class Player {
                 }
                 console.log(`${game.activePlayer.name} has skipped a turn`);
                 break;
-
         }
-        // Return the valid card play for frontend to display, even if there is no additional info to send
-        return {lastPlayedCard: card};
+
+        return { lastPlayedCard: card };
     }
 
     // --- RESOLUTION FUNCTIONS FOR FRONTEND QUERIES ---

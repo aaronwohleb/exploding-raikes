@@ -34,7 +34,7 @@ export function setupGameSockets(io: Server) {
         // Send them the current board state
         socket.emit('game_state_update', {
           activeUserId: game.activePlayer.userId,
-          topCard: game.discardPile.topCard,
+          topCard: game.discardPile.pile[game.discardPile.pile.length - 1],
           deckCount: game.drawDeck.deck.length
         });
         
@@ -44,10 +44,8 @@ export function setupGameSockets(io: Server) {
     
     /**
      * Draw Card. Fired when a player wants to draw a card, ending their turn.
-     * 
-     * Expects: { roomId: string }
-     * 
-     * Emits back to THIS player:      receive_card      — their updated hand
+     * * Expects: { roomId: string }
+     * * Emits back to THIS player:      receive_card      — their updated hand
      * Broadcasts to ALL in the room:  player_draws_card — who drew (no card details)
      */
     socket.on('draw_card', (data: { roomId: string, userId: string }) => {
@@ -82,20 +80,18 @@ export function setupGameSockets(io: Server) {
         }
 
         if (result.defusePending) {
-            console.log(`${player.name} is attempting to defuse an exploding kitten! Waiting for slider input...`);
+             console.log(`${player.name} is attempting to defuse an exploding kitten! Waiting for slider input...`);
              socket.emit('update_hand', { fullHand: player.hand }); // Updates UI to show Defuse is gone
              
              // Tell the frontend to pop up the slider
              socket.emit('defuse_requires_index', { maxIndex: game.drawDeck.deck.length });
-             
+
              io.to(`lobby:${roomId}`).emit('action_resolved', { message: `${player.name} drew an Exploding Kitten and is DEFUSING IT!` });
              return;
         }
 
-        // Send this player's full updated hand to prevent desync, along with the just drawn card for animation purposes
         socket.emit('update_hand', { fullHand: player.hand, justDrawnCard: result.drawnCard });
 
-        // Broadcast to everyone in the room that this player drew (no card details)
         io.to(`lobby:${roomId}`).emit('player_draws_card', {
           playerId: userId,
           deckCount: game.drawDeck.deck.length
@@ -103,111 +99,125 @@ export function setupGameSockets(io: Server) {
 
         io.to(`lobby:${roomId}`).emit('game_state_update', {
             activeUserId: game.activePlayer.userId,
-            topCard: game.discardPile.topCard,
+            topCard: game.discardPile.pile[game.discardPile.pile.length - 1],
             deckCount: game.drawDeck.deck.length
-          });
+        });
 
         console.log(`draw_card: player ${userId} drew a card in room ${roomId}`);
-
       } catch (error: any) {
         // Catch the "Not your turn" error thrown by Player.ts
         socket.emit('play_error', { message: error.message });
       }
     });
 
-    socket.on('submit_defuse_location', (data: { roomId: string, userId: string, insertIndex: number }) => {
-        const { roomId, userId, insertIndex } = data;
-        const unifiedRoom = `lobby:${roomId}`;
-        
-        const game = GameManager.getInstance().getGame(roomId);
-        if (!game) return;
-
-        const player = game.playerList.find(p => p.userId === userId);
-        if (!player) return;
-
-        try {
-            // Call our new Player method
-            player.resolveDefuse(game, insertIndex);
-
-            socket.emit('action_resolved', { message: `You successfully hid the Exploding Kitten.` });
-            io.to(unifiedRoom).emit('action_resolved', { message: `${player.name} put the Exploding Kitten back in the deck.` });
-
-            // The deck count went up, and the turn changed! Update everyone.
-            io.to(unifiedRoom).emit('game_state_update', {
-                activeUserId: game.activePlayer.userId,
-                topCard: game.discardPile.topCard,
-                deckCount: game.drawDeck.deck.length
-            });
-
-        } catch (error: any) {
-            socket.emit('play_error', { message: error.message });
-        }
-    });
-
-
     /**
-     * PLAY CARD. Fired when a player wants to play one or more cards from their hand.
-     * 
-     * Expects: { roomId: string, cardIds: number[] }
-     * 
-     * Broadcasts to ALL in the room: player_plays_card — what was played
-     * Emits back to THIS player:     see_the_future    — only if See the Future was played
+     * Play Card. Initiates the Nope timer window.
      */
-    socket.on('play_card', (data: { roomId: string, cardIds: number[], userId: string }) => {
-      const { roomId, cardIds, userId } = data;
+    socket.on('play_card', (data: { roomId: string, userId: string, cardIds: number[] }) => {
+      const { roomId, userId, cardIds } = data;
       const game = GameManager.getInstance().getGame(roomId);
-
-      if (!game) {
-        console.error(`play_card: no active game found for room ${roomId}`);
-        return;
-      }
+      if (!game) return;
 
       const player = game.playerList.find(p => p.userId === userId);
+      if (!player) return;
 
-      if (!player) {
-        console.error(`play_card: player ${userId} not found in game ${roomId}`);
-        return;
+      player.selectedCards = player.hand.filter(c => cardIds.includes(c.id));
+      
+      if (player.checkMove()) {
+          socket.emit('play_error', { message: "Invalid move!" });
+          return;
       }
 
+      // Remove cards from hand and set as pending
+      player.hand = player.hand.filter(c => !cardIds.includes(c.id));
+      game.pendingAction = { playerId: userId, cards: player.selectedCards };
+      
+      socket.emit('update_hand', { fullHand: player.hand });
+      io.to(`lobby:${roomId}`).emit('player_plays_card', { playerId: userId, cards: player.selectedCards });
+
+      startNopeTimer(io, roomId, game);
+    });
+
+    /**
+     * Play Nope. Resets the 5-second timer.
+     */
+    socket.on('play_nope', (data: { roomId: string, userId: string, cardId: number }) => {
+      const { roomId, userId, cardId } = data;
+      const game = GameManager.getInstance().getGame(roomId);
+      if (!game || !game.pendingAction) return;
+
+      const player = game.playerList.find(p => p.userId === userId);
+      if (!player) return;
+
+      const nopeCard = player.hand.find(c => c.id === cardId && c.type === CardType.Nope);
+      if (!nopeCard) return;
+
+      // Use the card
+      player.hand = player.hand.filter(c => c.id !== cardId);
+      game.nopeStack.push(nopeCard);
+      
+      socket.emit('update_hand', { fullHand: player.hand });
+      io.to(`lobby:${roomId}`).emit('player_plays_card', { playerId: userId, cards: [nopeCard] });
+
+      // Reset timer
+      startNopeTimer(io, roomId, game);
+    });
+
+    function startNopeTimer(io: Server, roomId: string, game: Game) {
+        if (game.nopeTimer) clearTimeout(game.nopeTimer);
+
+        game.nopeTimer = setTimeout(() => {
+            const player = game.playerList.find(p => p.userId === game.pendingAction!.playerId);
+            if (!player || !game.pendingAction) return;
+
+            // Resolve based on stack count (even = original goes through, odd = noped)
+            if (game.nopeStack.length % 2 === 0) {
+                const result = player.executeFinalEffect(game, game.pendingAction.cards);
+                
+                // Add cards to discard
+                game.discardPile.addCards(game.pendingAction.cards);
+                game.discardPile.addCards(game.nopeStack);
+
+                if (result.futureCards) {
+                    socket.emit('see_the_future', { cards: result.futureCards });
+                }
+
+                if (result.cardRequest) {
+                    socket.emit('action_requires_target', { requestType: result.cardRequest });
+                }
+
+                io.to(`lobby:${roomId}`).emit('game_state_update', {
+                    activeUserId: game.activePlayer.userId,
+                    topCard: game.discardPile.pile[game.discardPile.pile.length - 1],
+                    deckCount: game.drawDeck.deck.length
+                });
+            } else {
+                // Noped! Just discard everything
+                game.discardPile.addCards(game.pendingAction.cards);
+                game.discardPile.addCards(game.nopeStack);
+                io.to(`lobby:${roomId}`).emit('action_resolved', { message: "The action was NOPED!" });
+            }
+
+            game.clearPendingAction();
+        }, 5000);
+    }
+
+    socket.on('submit_defuse_location', (data: { roomId: string, userId: string, insertIndex: number }) => {
+      const { roomId, userId, insertIndex } = data;
+      const game = GameManager.getInstance().getGame(roomId);
+      if (!game) return;
+      const player = game.playerList.find(p => p.userId === userId);
+      if (!player) return;
+
       try {
-        const result = player.playSelectedCards(game, cardIds );
-
-            // Broadcast to all players that this player played cards
-
-          io.to(`lobby:${roomId}`).emit('player_plays_cards', {
-            playerId: userId,
-            playedCards: result.lastPlayedCard, 
-          });
-
-        socket.emit('update_hand', { fullHand: player.hand });
-
-        // --- INTERACTIVE ACTIONS (Favor, Combos) ---
-        if (result.cardRequest === CardRequestType.Favor || result.cardRequest === CardRequestType.Two_Card_Combo || result.cardRequest === CardRequestType.Three_Card_Combo) {
-          // Ask for a target
-          socket.emit('action_requires_target', { 
-            actionType: result.cardRequest
-          });
-          io.to(`lobby:${roomId}`).emit('game_state_update', {
-          activeUserId: game.activePlayer.userId,
-          topCard: result.lastPlayedCard,
-          deckCount: game.drawDeck.deck.length
-        });
-          return; 
-        }
-
-        // --- INSTANT ACTIONS (Skip, Shuffle, STF, etc.) ---
-        if (result.futureCards) {
-          socket.emit('see_the_future', { cards: result.futureCards });
-        }
-
+        player.resolveDefuse(game, insertIndex);
         io.to(`lobby:${roomId}`).emit('game_state_update', {
-          activeUserId: game.activePlayer.userId,
-          topCard: result.lastPlayedCard,
-          deckCount: game.drawDeck.deck.length
+            activeUserId: game.activePlayer.userId,
+            topCard: game.discardPile.pile[game.discardPile.pile.length - 1],
+            deckCount: game.drawDeck.deck.length
         });
-
-      } catch (error) {
-        console.error("Server failed to process play_card:", error);
+      } catch (error: any) {
+        socket.emit('play_error', { message: error.message });
       }
     });
 
