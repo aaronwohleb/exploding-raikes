@@ -1,6 +1,7 @@
 import { Player } from './Player';
 import { DrawDeck } from './DrawDeck';
 import { DiscardPile } from './DiscardPile';
+import { Card, pendingAction } from '../types/types';
 
 /**
  * Responsible for holding the game state and running the game.
@@ -12,6 +13,20 @@ export class Game {
     private _discardPile: DiscardPile;
     private _activePlayer: Player;
     private _numTurns: number;
+
+    public pendingAction: pendingAction | null = null;
+    public nopeStack: Card[] = [];
+    public nopeTimer: NodeJS.Timeout | null = null;
+
+    /**
+     * Resets the game state after a Nope window closes or an action is resolved.
+     */
+    public clearPendingAction() {
+        if (this.nopeTimer) clearTimeout(this.nopeTimer);
+        this.pendingAction = null;
+        this.nopeStack = [];
+        this.nopeTimer = null;
+    }
 
     /**
      * Constructs a new Game object when called containing a player list and a default game state.
@@ -26,8 +41,6 @@ export class Game {
         this._numTurns = 1;
 
     }
-
-
 
     /**
      * Gets the game's playerList.
@@ -104,7 +117,7 @@ export class Game {
     /**
      * Gets the game's turns remaining counter.
      * 
-     * @return the turns remaining counter
+     * @return the numTurns
      */
     public get numTurns(): number {
         return this._numTurns;
@@ -113,10 +126,9 @@ export class Game {
     /**
      * Sets the game's turns remaining counter.
      * 
-     * @param value the edited turns remaining counter
+     * @param value the edited numTurns
      */
     public set numTurns(value: number) {
         this._numTurns = value;
     }
 }
-
