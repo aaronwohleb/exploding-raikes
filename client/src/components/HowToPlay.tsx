@@ -30,7 +30,7 @@ export default function HowToPlay() {
     },
     {
       title: "The Basics",
-      content: "You will start the game with 7 random cards, and 1 defuse card. Each turn you may play any number of cards, to help you investigate the order of the draw deck, sabatoge your openents or help yoursefl. At the end of your turn you must draw a card, if you draw a card without a defuse you die. The only goal is to be the last player standing!",
+      content: "You will start the game with 7 random cards, and 1 defuse card. Each turn you may play any number of cards, to help you investigate the order of the draw deck, sabatoge your openents or help yourself. At the end of your turn you must draw a card, if you draw a card without a defuse you die. The only goal is to be the last player standing!",
       image: explodingKauffmanBase,
       imageAlt: "Exploding Kauffman Card - The dreaded card that eliminates players",
     },
@@ -38,60 +38,60 @@ export default function HowToPlay() {
       title: "Defuse Cards",
       content: "Got an Exploding Kauffman? Play a Defuse card to stay in the game! Place the explosion back in the deck anywhere you want.",
       image: defuseBase,
-      imageAlt: "Defuse Card - Your safety net against explosions",
+      imageAlt: "Defuse Card - Stops Exploding Kauffmans",
     },
     {
       title: "Attack Cards",
-      content: "Force the next player to take TWO turns instead of one. Attack twice in a row to really mess with someone! ⚔️",
+      content: "Force the next player to take TWO turns instead of one. Attacking will automatically end your turn and stack any extra turns on top of your attack.",
       image: attackBase,
-      imageAlt: "Attack Card - Force other players to take extra turns",
+      imageAlt: "Attack Card - Force the next player to take 2 extra turns",
     },
     {
       title: "Skip Cards",
-      content: "Skip your turn without drawing a card. Perfect for avoiding danger! ⏭️",
+      content: "Skip one turn without drawing a card. If you were attacked, you still have to play extra turns.",
       image: skipBase,
       imageAlt: "Skip Card - Avoid drawing cards and pass your turn",
     },
     {
       title: "Favor Cards",
-      content: "Force another player to give you a card of their choice. Choose wisely! 🎁",
+      content: "Force another player to give you a card of their choice. Choose wisely!",
       image: favorBase,
       imageAlt: "Favor Card - Demand a card from another player",
     },
     {
       title: "Shuffle Cards",
-      content: "Shuffle the draw deck to mix things up. Great for when you know what's coming! 🔀",
+      content: "Shuffle the draw deck to mix things up. Great for when you know what's coming!",
       image: shuffleBase,
-      imageAlt: "Shuffle Card - Randomize the deck order",
+      imageAlt: "Shuffle Card - Randomize the draw deck order",
     },
     {
       title: "Nope Cards",
-      content: "Cancel any action card except for Exploding Kauffman or Defuse. Nope their Nope! 🚫",
+      content: "Cancel any action card except for Exploding Kauffman or Defuse. Nope their Nope!",
       image: nopeBase,
       imageAlt: "Nope Card - Cancel other players' actions",
     },
     {
       title: "See The Future Cards",
-      content: "Privately peek at the top 3 cards of the draw deck. Plan your strategy! 👁️",
+      content: "Privately peek at the top 3 cards of the draw deck. Plan your strategy!",
       image: seeTheFutureBase,
       imageAlt: "See The Future Card - Look ahead at upcoming cards",
     },
     {
-      title: "Bug Cards",
-      content: "Bugs are useless on their own, but using them together can preform combos! Play two mathcing bugs to steal a card from an opponent, with three of a kind you can demand any one specific card from an opponent! and lastly if you play five different cards you can take a card from the graveyard!",
+      title: "Bug Cards and Combos",
+      content: "Bugs are useless on their own, but playing them together can preform combos! Play any two matching cards (ie two Heisenbugs or two Skips) to steal a random card from an opponent. With three of a kind you can demand any one specific card type from an opponent! Choose wisely because if they don't have the specified card type, you get nothing. And lastly if you play five cards of five different types you can take a card from the discard pile!",
       multipleImages: [
         { src: heisenbugBase, alt: "Heisenbug - Disappears when you try to debug it" },
         { src: legacyBugBase, alt: "Legacy Bug - From old code that no one understands" },
-        { src: megaBugBase, alt: "Mega Bug - A massive problem that affects everything" },
+        { src: megaBugBase, alt: "Mega Bug - Someone should deep clean megalounge" },
         { src: syntaxBugBase, alt: "Syntax Bug - Small but annoying compilation errors" },
-        { src: bathroomDrainBugBase, alt: "Bathroom Drain Bug - It keeps coming back!" },
+        { src: bathroomDrainBugBase, alt: "Bathroom Drain Bug - Make sure to pour water down the drain" },
       ],
     },
     {
       title: "How to Win",
-      content: "Be the last developer standing! Survive all the bugs, explosions, and player attacks to claim victory! 🏆",
+      content: "Be the last developer standing! Survive all the bugs, explosions, and player attacks to claim victory!",
       image: null,
-      description: "Victory Screen",
+      description: "",
     },
   ];
 
@@ -197,7 +197,7 @@ export default function HowToPlay() {
               }}
               className="px-6 py-3 bg-[#B81C27] text-white rounded-xl font-medium hover:bg-[#C81C27] transition-colors"
             >
-              {step === tutorialSteps.length - 1 ? "Start Playing! 🎮" : "Next →"}
+              {step === tutorialSteps.length - 1 ? "Start Playing!" : "Next →"}
             </button>
           </div>
         </div>
