@@ -11,6 +11,7 @@ import { setupGameSockets } from './sockets/gameSockets';
 // Routes
 import lobbyRoutes from './routes/lobbyRoutes';
 import authRoutes from "./routes/authRoutes";
+import userRoutes from "./routes/userRoutes";
 
 const app = express();
 const server = http.createServer(app);
@@ -43,6 +44,8 @@ app.get('/api/health', (req: Request, res: Response) => {
 // Connect routes to server
 app.use('/api', authRoutes);
 app.use('/api/lobbies', lobbyRoutes);
+app.use('/api/users', userRoutes);
+
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {

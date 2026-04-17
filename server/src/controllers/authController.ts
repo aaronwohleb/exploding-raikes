@@ -14,10 +14,15 @@ const JWT_SECRET =  "super_cool_key";
  * @param backendUser Backend User object to convert
  * @returns FrontendUser object with only necessary fields for the client
  */
-const toFrontendUser = (backendUser: any): FrontendUser => ({
+export const toFrontendUser = (backendUser: any): FrontendUser => ({
   _id: backendUser._id.toString(),
   username: backendUser.username,
   email: backendUser.email,
+  stats: {
+    gamesPlayed: backendUser.stats?.gamesPlayed ?? 0,
+    wins: backendUser.stats?.wins ?? 0,
+    timesExploded: backendUser.stats?.timesExploded ?? 0,
+  },
 });
 
 // REGISTER USER

@@ -1,3 +1,9 @@
+export interface UserStats {
+  gamesPlayed: number;
+  wins: number;
+  timesExploded: number;
+}
+
 /**
  * The user shape returned to the frontend 
  * — intentionally excludes password and Mongoose internals
@@ -6,6 +12,7 @@ export interface FrontendUser {
   _id: string;
   username: string;
   email: string;
+  stats?: UserStats;
 }
 
 

@@ -9,6 +9,7 @@ import JoinLobbyPage from "./components/JoinLobbyPage";
 import CreateLobbyPage from "./components/CreateLobbyPage";
 import LobbyRoomPage from "./components/LobbyRoomPage";
 import InGameScreen from "./components/InGameScreen";
+import ProfilePage from "./components/ProfilePage";
 
 
 // --- Placeholder Pages (Move these to separate files later) ---
@@ -23,11 +24,7 @@ const HowToPage = () => (
     <h1>How to Play</h1>
   </div>
 );
-const ProfilePage = () => (
-  <div className="p-10 text-center">
-    <h1>This is your Profile stuff</h1>
-  </div>
-);
+
 
 function App() {
   return (
