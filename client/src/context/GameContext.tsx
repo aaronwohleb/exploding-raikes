@@ -23,6 +23,10 @@ interface GameContextType {
 
   requestInitialState: (roomId: string, userId: string) => void;
 
+  explodedPlayerId: string | null;
+  gameOver: { winnerId: string, winnerName: string } | null;
+  dismissExplosion: () => void;
+
   // EMITTERS 
   // Emits a draw_card event to the server.
   drawCard: (roomId: string) => void;
@@ -60,6 +64,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const [actionRequiresTarget, setActionRequiresTarget] = useState<CardRequestType | null>(null);
   const [favorRequest, setFavorRequest] = useState<{ sourceUserId: string, sourcePlayerName: string } | null>(null);
+  
+  const [explodedPlayerId, setExplodedPlayerId] = useState<string | null>(null);
+  const [gameOver, setGameOver] = useState<{ winnerId: string, winnerName: string } | null>(null);
+  const dismissExplosion = () => setExplodedPlayerId(null);
+
   const requestInitialState = (roomId: string, userId: string) => {
     if (!socket) return;
     socket.emit('request_initial_state', { roomId, userId });
@@ -145,6 +154,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     socket.on('action_requires_target', handleActionRequiresTarget);
     socket.on('request_favor_card', handleRequestFavorCard);
 
+    socket.on('player_exploded', ({ playerId }: { playerId: string }) => setExplodedPlayerId(playerId));
+    socket.on('game_over', (data: { winnerId: string, winnerName: string }) => setGameOver(data));
+
     // Turn the listeners off
     return () => {
       socket.off('update_hand', handleUpdateHand);
@@ -156,6 +168,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       socket.off('action_requires_target', handleActionRequiresTarget);
       socket.off('request_favor_card', handleRequestFavorCard);
+
+      socket.off('player_exploded');
+      socket.off('game_over');
+
     };
   }, [socket]);
 
@@ -228,6 +244,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       submitTarget,
       submitFavorCard,
       requestInitialState,
+      explodedPlayerId,
+      gameOver,
+      dismissExplosion,
     }}>
       {children}
     </GameContext.Provider>

@@ -66,6 +66,7 @@ export class Player {
             } else {
                 this.lose(game);
                 exploded = true;
+                return { drawnCard, exploded };
             }
 
         } else {
@@ -309,6 +310,8 @@ export class Player {
         this.endTurn(game);
         game.playerList = game.playerList.filter(player => player !== this);
         console.log(`${this._name} has lost the game and been successfully removed from the playerList.`);
+        console.log(`playerList after removal: ${game.playerList.map(p => p.name).join(', ')}`);
+        console.log(`activePlayer after removal: ${game.activePlayer.name}`);
     }
 
     /**

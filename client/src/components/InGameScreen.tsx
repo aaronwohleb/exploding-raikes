@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useNavigate } from 'react-router-dom';
 import { motion } from "framer-motion";
 import { useGame } from "../context/GameContext";
 import { useAuth } from "../context/AuthContext";
@@ -9,6 +10,7 @@ import CardFront from "./CardFront";
 import DrawDeck from "./DrawDeck"; 
 import DiscardDeck from "./DiscardDeck"; 
 import { CardType } from "../types/types";
+
 
 //Player main screen definition
 export default function InGameScreen() {
@@ -26,7 +28,10 @@ export default function InGameScreen() {
     closeSeeTheFuture,
     submitTarget, 
     submitFavorCard,
-    requestInitialState
+    requestInitialState,
+    dismissExplosion,
+    gameOver,
+    explodedPlayerId,
   } = useGame();
 
   
@@ -34,6 +39,7 @@ export default function InGameScreen() {
   const { currentFrontendUser } = useAuth();
   const { roomId: paramRoomId } = useParams();
   const [defuseIndex, setDefuseIndex] = useState<number>(0);
+  const navigate = useNavigate();
   
   const roomId = paramRoomId || currentLobby?.code || "ROOM_ID";
 
@@ -340,6 +346,62 @@ export default function InGameScreen() {
                 </motion.div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Player Loss Modal */}
+      {explodedPlayerId === currentFrontendUser?._id && !gameOver && (
+        <div className="absolute inset-0 bg-red-900/90 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#FCF8EE] text-[#0F0F0F] p-8 rounded-2xl max-w-md w-full shadow-2xl flex flex-col items-center">
+            <h2 className="text-5xl font-bold uppercase tracking-[0.02em] mb-2 text-[#B81C27] animate-pulse">
+              YOU EXPLODED 💥
+            </h2>
+            <p className="mb-8 text-gray-600 text-xl text-center">
+              You drew an Exploding Kitten and have no Defuse. You're out!
+            </p>
+            <div className="flex flex-col gap-4 w-full">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate('/')}
+                className="bg-[#B81C27] hover:bg-[#C81C27] text-[#FCF8EE] px-8 py-4 rounded-[4px] font-normal text-2xl uppercase tracking-[0.02em] shadow-sm w-full transition-colors"
+              >
+                Return to Lobby
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => dismissExplosion()}
+                className="bg-white border-2 border-gray-200 hover:border-[#B81C27] text-[#0F0F0F] px-8 py-4 rounded-[4px] font-normal text-2xl uppercase tracking-[0.02em] w-full transition-colors"
+              >
+                Spectate
+              </motion.button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Game Over Modal */}
+      {gameOver && (
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#FCF8EE] text-[#0F0F0F] p-8 rounded-2xl max-w-md w-full shadow-2xl flex flex-col items-center">
+            <h2 className="text-5xl font-bold uppercase tracking-[0.02em] mb-2 text-[#B81C27]">
+              {gameOver.winnerId === currentFrontendUser?._id ? '🏆 YOU WIN!' : 'GAME OVER'}
+            </h2>
+            <p className="mb-8 text-gray-600 text-xl text-center">
+              {gameOver.winnerId === currentFrontendUser?._id 
+                ? 'You are the last cat standing!' 
+                : `${gameOver.winnerName} wins!`}
+            </p>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate('/')}
+              className="bg-[#B81C27] hover:bg-[#C81C27] text-[#FCF8EE] px-8 py-4 rounded-[4px] font-normal text-2xl uppercase tracking-[0.02em] shadow-sm w-full transition-colors"
+            >
+              Return to Lobby
+            </motion.button>
           </div>
         </div>
       )}

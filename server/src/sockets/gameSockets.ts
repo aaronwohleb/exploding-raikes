@@ -78,7 +78,24 @@ export function setupGameSockets(io: Server) {
                  topCard: result.drawnCard,
                  deckCount: game.drawDeck.deck.length
              });
-             return;
+
+             // player that exploded
+             socket.emit('player_exploded', { playerId: userId, playerName: player.name });
+
+             // tells entire room the game is over
+             if (game.playerList.length === 1) {
+                io.to(`lobby:${roomId}`).emit('game_over', { 
+                    winnerId: game.playerList[0].userId, 
+                    winnerName: game.playerList[0].name 
+                });
+            } else if (game.playerList.length === 0) {
+                io.to(`lobby:${roomId}`).emit('game_over', { 
+                    winnerId: null, 
+                    winnerName: 'Nobody' 
+                });
+            }
+
+            return;
         }
 
         if (result.defusePending) {
