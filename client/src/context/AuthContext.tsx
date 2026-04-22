@@ -9,6 +9,15 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
+  updateUsername: (newUsername: string) => Promise<void>;
+
+  updateUser?: (patch: Partial<FrontendUser>) => void; // Optional function to update user info in context
+  patchUser: (patch: Partial<FrontendUser>) => void;
+  /**
+   * Permanently deletes the user's account on the backend, clears token and state.
+   * Throws on failure so the caller can surface an error.
+   */
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,8 +42,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
+  const updateUsername = async (newUsername: string) => {
+    if (!user) throw new Error("Can't update username: no user is logged in.");
+    const updated = await api.updateUsername(user._id, newUsername);
+    setUser(updated); // Sync context with server's authoritative response
+  };
+ 
+  const patchUser = (patch: Partial<FrontendUser>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      return { ...prev, ...patch };
+    });
+  };
+
+  const deleteAccount = async () => {
+    if (!user) throw new Error("Can't delete account: no user is logged in.");
+    await api.deleteAccount(user._id);
+    localStorage.removeItem('token');
+    setUser(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ currentFrontendUser: user, login, register, logout }}>
+    <AuthContext.Provider value={{ currentFrontendUser: user, login, register, logout, updateUsername, patchUser, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );
