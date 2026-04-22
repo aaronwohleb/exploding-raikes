@@ -37,6 +37,8 @@ interface GameContextType {
 
   defuseRequest: { maxIndex: number } | null;
   submitDefuseLocation: (roomId: string, insertIndex: number) => void;
+  eliminatedPlayerIds: string[];
+  explosionNotification: string | null;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -68,10 +70,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [explodedPlayerId, setExplodedPlayerId] = useState<string | null>(null);
   const [gameOver, setGameOver] = useState<{ winnerId: string, winnerName: string } | null>(null);
   const dismissExplosion = () => setExplodedPlayerId(null);
+  const [eliminatedPlayerIds, setEliminatedPlayerIds] = useState<string[]>([]);
+  const [explosionNotification, setExplosionNotification] = useState<string | null>(null);
 
   const requestInitialState = (roomId: string, userId: string) => {
     if (!socket) return;
     socket.emit('request_initial_state', { roomId, userId });
+    // Reset game over state for new sessions
+    setGameOver(null);
+    setExplodedPlayerId(null);
+    setEliminatedPlayerIds([]);
+    setExplosionNotification(null);
     };
   // listeners
 
@@ -154,7 +163,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
     socket.on('action_requires_target', handleActionRequiresTarget);
     socket.on('request_favor_card', handleRequestFavorCard);
 
-    socket.on('player_exploded', ({ playerId }: { playerId: string }) => setExplodedPlayerId(playerId));
+    socket.on('player_exploded', ({ playerId, playerName }: { playerId: string, playerName: string }) => {
+      setExplodedPlayerId(playerId);
+      setEliminatedPlayerIds(prev => [...prev, playerId]);
+      setExplosionNotification(`💥 ${playerName} exploded!`);
+      setTimeout(() => setExplosionNotification(null), 3000);
+  });
     socket.on('game_over', (data: { winnerId: string, winnerName: string }) => setGameOver(data));
 
     // Turn the listeners off
@@ -247,6 +261,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       explodedPlayerId,
       gameOver,
       dismissExplosion,
+      eliminatedPlayerIds,
+      explosionNotification,
     }}>
       {children}
     </GameContext.Provider>

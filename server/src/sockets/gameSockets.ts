@@ -79,8 +79,8 @@ export function setupGameSockets(io: Server) {
                  deckCount: game.drawDeck.deck.length
              });
 
-             // player that exploded
-             socket.emit('player_exploded', { playerId: userId, playerName: player.name });
+             // player that exploded; tells entire room who exploded
+             io.to(`lobby:${roomId}`).emit('player_exploded', { playerId: userId, playerName: player.name });
 
              // tells entire room the game is over
              if (game.playerList.length === 1) {

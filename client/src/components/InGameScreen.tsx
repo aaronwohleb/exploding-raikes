@@ -32,6 +32,8 @@ export default function InGameScreen() {
     dismissExplosion,
     gameOver,
     explodedPlayerId,
+    eliminatedPlayerIds,
+    explosionNotification,
   } = useGame();
 
   
@@ -96,7 +98,11 @@ export default function InGameScreen() {
           return (
             <div 
               key={opp._id} 
-              className={`flex flex-col items-center gap-2 transition-all duration-300 ${isOpponentTurn ? 'scale-110 drop-shadow-2xl opacity-100' : 'opacity-50'}`}
+              className={`flex flex-col items-center gap-2 transition-all duration-300 ${
+                eliminatedPlayerIds.includes(opp._id) 
+                    ? 'opacity-30' 
+                    : isOpponentTurn ? 'scale-110 drop-shadow-2xl opacity-100' : 'opacity-50'
+            }`}
             >
               {/* Floating Thinking Badge */}
               <div className="h-4">
@@ -107,8 +113,18 @@ export default function InGameScreen() {
                 {[...Array(5)].map((_, i) => (
                   <CardBack key={i} className="w-12 h-16" />
                 ))}
+                {eliminatedPlayerIds.includes(opp._id) && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-red-500 text-6xl font-black">✕</span>
+                  </div>
+                )}
               </div>
-              <span className={`text-lg font-medium px-3 py-1 rounded-full ${isOpponentTurn ? 'bg-amber-500 text-black' : 'bg-black/40 text-white'}`}>
+              <span className={`text-lg font-medium px-3 py-1 rounded-full ${
+                eliminatedPlayerIds.includes(opp._id)
+                    ? 'bg-red-900/60 text-red-300 line-through'
+                    : isOpponentTurn ? 'bg-amber-500 text-black' : 'bg-black/40 text-white'
+              }`}
+            >
                 {opp.username}
               </span>
             </div>
@@ -358,7 +374,7 @@ export default function InGameScreen() {
               YOU EXPLODED 💥
             </h2>
             <p className="mb-8 text-gray-600 text-xl text-center">
-              You drew an Exploding Kitten and have no Defuse. You're out!
+              You drew an Exploding Kauffman and have no Defuse. You're out!
             </p>
             <div className="flex flex-col gap-4 w-full">
               <motion.button
@@ -391,7 +407,7 @@ export default function InGameScreen() {
             </h2>
             <p className="mb-8 text-gray-600 text-xl text-center">
               {gameOver.winnerId === currentFrontendUser?._id 
-                ? 'You are the last cat standing!' 
+                ? 'You are the last student standing!' 
                 : `${gameOver.winnerName} wins!`}
             </p>
             <motion.button
