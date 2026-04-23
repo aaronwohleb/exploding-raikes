@@ -205,6 +205,13 @@ export default function InGameScreen() {
         </div>
       </div>
 
+      {/* Explosion Notification */}
+      {explosionNotification && (
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 bg-[#B81C27] text-[#FCF8EE] px-8 py-4 rounded-2xl shadow-2xl text-2xl font-bold uppercase tracking-widest animate-bounce">
+              {explosionNotification}
+          </div>
+      )}
+
 
       {/* INTERACTIVE MODALS */}
 

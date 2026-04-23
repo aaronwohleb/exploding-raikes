@@ -309,9 +309,6 @@ export class Player {
         // Remove the player from the playerList and end their turn
         this.endTurn(game);
         game.playerList = game.playerList.filter(player => player !== this);
-        console.log(`${this._name} has lost the game and been successfully removed from the playerList.`);
-        console.log(`playerList after removal: ${game.playerList.map(p => p.name).join(', ')}`);
-        console.log(`activePlayer after removal: ${game.activePlayer.name}`);
     }
 
     /**
