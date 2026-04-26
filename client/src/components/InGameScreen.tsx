@@ -182,7 +182,6 @@ export default function InGameScreen() {
 
         {/* Hand Render (card fanning effect)*/}
         <div className={`flex justify-center items-end h-64 px-8 w-full transition-all duration-300}`}>
-          <div className="overflow-x-auto no-scrollbar w-full flex justify-center">
             <div className="flex flex-nowrap min-w-max px-20 pb-10">
           {myHand.length > 0 ? (
             myHand.map((card, index) => {
@@ -216,7 +215,6 @@ export default function InGameScreen() {
             </div> 
           </div>
         </div>
-      </div>
 
 
       {/* INTERACTIVE MODALS */}
