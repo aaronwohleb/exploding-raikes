@@ -1,7 +1,7 @@
 {
-    "name": "exploding-kittens-server",
+    "name": "exploding-kauffman-server",
     "version": "1.0.0",
-    "description": "Backend for Exploding Kittens game",
+    "description": "Backend for Exploding Kauffman game",
     "main": "src/server.ts",
     "scripts": {
         "dev": "ts-node-dev --respawn --transpile-only src/server.ts",

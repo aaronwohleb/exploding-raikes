@@ -36,13 +36,13 @@ export interface LobbyState {
  */
 export enum CardType {
   Attack = 'Attack',
-  Beard_Cat = 'Beard_Cat',
-  Catermelon = 'Catermelon',
-  Hairy_Potato_Cat = 'Hairy_Potato_Cat',
-  Rainbow_Ralphing_Cat = 'Rainbow_Ralphing_Cat',
-  Tacocat = 'Tacocat',
+  Bathroom_Drain_Bug = 'Bathroom_Drain_Bug',
+  Mega_Bug = 'Mega_Bug',
+  Legacy_Bug = 'Legacy_Bug',
+  Syntax_Bug = 'Syntax_Bug',
+  Heisenbug = 'Heisenbug',
   Defuse = 'Defuse',
-  Exploding_Kitten = 'Exploding_Kitten',
+  Exploding_Kauffman = 'Exploding_Kauffman',
   Favor = 'Favor',
   Nope = 'Nope',
   See_the_Future = 'See_the_Future',
@@ -57,7 +57,8 @@ export enum CardRequestType {
   Favor = 'Favor',
   Two_Card_Combo = 'Two_Card_Combo',
   Three_Card_Combo = 'Three_Card_Combo',
-  Replace_Exploding_Kitten = 'Replace_Exploding_Kitten',
+  Five_Card_Combo = 'Five_Card_Combo',
+  Replace_Exploding_Kauffman = 'Replace_Exploding_Kauffman',
 }
 
 
@@ -76,4 +77,43 @@ export interface Card {
 export interface pendingAction {
   playerId: string;
   cards: Card[];
+  targetUserId?: string;
+  actionType?: CardRequestType;
+  requestedCardType?: CardType; // Only used for 3-card combos
+}
+
+/**
+ * Returned by beginCardPlay so the socket layer knows whether to start the Nope timer
+ * immediately or ask the player to pick a target first.
+ */
+export interface CardPlaySetupResult {
+    requiresTarget: boolean;
+    cardRequest?: CardRequestType;
+}
+ 
+/**
+ * Returned by resolvePendingAction so the socket layer knows what to emit.
+ */
+export interface PendingActionResult {
+    noped: boolean;
+    sourcePlayerId: string;
+  
+    futureCards?: Card[];
+    /** Present if the player needs to make a post-resolution choice (e.g. 5-card combo discard pick). */
+    cardRequest?: CardRequestType;
+    /** Present for 5-card combo — the unique card types currently available in the discard pile. */
+    availableDiscardTypes?: CardType[];
+
+    pendingFavor?: {
+        targetUserId: string;
+        sourceUserId: string;
+        sourcePlayerName: string;
+    };
+ 
+    comboResult?: {
+        sourcePlayerId: string;
+        targetUserId: string;
+        stolenCard: Card | null;       // null = 3-card combo target didn't have the requested type
+        requestedType?: CardType;      // what was requested (3-card combo only)
+    };
 }

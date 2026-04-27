@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { useGameSocket } from './SocketContext';
-import { Card, CardRequestType, CardType, GameState } from '../types/types';
+import { Card, CardRequestType, CardType, GameState, NopeWindowState } from '../types/types';
 import { useAuth } from './AuthContext'; 
 
 /**
@@ -21,15 +21,25 @@ interface GameContextType {
   // If not null, the UI should prompt the user to pick a card to give away
   favorRequest: { sourceUserId: string, sourcePlayerName: string } | null;
 
+  nopeWindow: NopeWindowState | null;
+  fiveCardComboTypes: CardType[] | null;
+
+  actionMessage: string | null;
+  playError: string | null;
+
   requestInitialState: (roomId: string, userId: string) => void;
 
   // EMITTERS 
   // Emits a draw_card event to the server.
   drawCard: (roomId: string) => void;
   // Emits a play_card event to the server with the selected cards.
-  playCard: (roomId: string, cardIds: number[], targetPlayerId?: string) => void;
+  playCard: (roomId: string, cardIds: number[]) => void;
+  playNope: (roomId: string) => void;
+
   submitTarget: (roomId: string, targetUserId: string, actionType: CardRequestType, requestedCardType?: CardType) => void;
   submitFavorCard: (roomId: string, cardId: number, sourceUserId: string) => void;
+  submitFiveCardChoice: (roomId: string, cardType: CardType) => void;
+
 
   defuseRequest: { maxIndex: number } | null;
   submitDefuseLocation: (roomId: string, insertIndex: number) => void;
@@ -60,10 +70,33 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const [actionRequiresTarget, setActionRequiresTarget] = useState<CardRequestType | null>(null);
   const [favorRequest, setFavorRequest] = useState<{ sourceUserId: string, sourcePlayerName: string } | null>(null);
+
+  const [nopeWindow, setNopeWindow] = useState<NopeWindowState | null>(null);
+  const nopeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+ 
+  // Five-card combo state — the available card types from the discard pile
+  const [fiveCardComboTypes, setFiveCardComboTypes] = useState<CardType[] | null>(null);
+ 
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [playError, setPlayError] = useState<string | null>(null);
   const requestInitialState = (roomId: string, userId: string) => {
     if (!socket) return;
     socket.emit('request_initial_state', { roomId, userId });
     };
+
+
+
+  /**
+   * Starts or restarts the visual nope window timer on the frontend.
+   * Slightly longer than the backend's 5s to avoid the UI closing before resolution arrives.
+   */
+  function resetNopeWindowTimer() {
+    if (nopeTimerRef.current) clearTimeout(nopeTimerRef.current);
+    nopeTimerRef.current = setTimeout(() => {
+      setNopeWindow(null);
+    }, 6000);
+  }
+
   // listeners
 
   useEffect(() => {
@@ -98,8 +131,26 @@ export function GameProvider({ children }: { children: ReactNode }) {
      * Broadcast to ALL players when any player plays a card.
      * Contains the card type and all cards involved so every player can see what was played.
      */
-    const handlePlayerPlaysCards = (data: {playedCards: Card[], playerId: string }) => {
-      console.log('player' + data.playerId + '_plays_cards:', data.playedCards);
+    const handlePlayerPlaysCard = (data: { 
+      playerId: string, 
+      cards: Card[], 
+      targetPlayerId?: string, 
+      targetPlayerName?: string,
+      actionType?: CardRequestType,
+    }) => {
+      console.log(`player ${data.playerId} plays cards:`, data.cards);
+
+      setLastPlayedCard(data.cards[data.cards.length - 1]);
+
+      // Open/restart the Nope window
+      setNopeWindow({
+        playerId: data.playerId,
+        cards: data.cards,
+        targetPlayerName: data.targetPlayerName,
+        actionType: data.actionType,
+        startedAt: Date.now(),
+      });
+      resetNopeWindowTimer();
     };
 
     /**
@@ -109,6 +160,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const handleSeeTheFuture = (data: {cards: Card[]}) => {
       console.log('see_the_future — top 3 cards:', data.cards);
       setSeeTheFutureCards(data.cards);
+      setNopeWindow(null);
     };
 
     /**
@@ -124,38 +176,76 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     // --- INTERACTIVE ACTION LISTENERS ---
 
-    const handleActionRequiresTarget = (data: { actionType: CardRequestType }) => {
-      console.log("Action requires target!", data.actionType);
-      setActionRequiresTarget(data.actionType); // Pops up target selection modal
+    const handleActionRequiresTarget = (data: { requestType: CardRequestType, availableDiscardTypes?: CardType[] }) => {
+      console.log("Action requires target!", data.requestType);
+ 
+      if (data.requestType === CardRequestType.Five_Card_Combo && data.availableDiscardTypes) {
+        // 5-card combo resolved — show the type picker instead of target picker
+        setFiveCardComboTypes(data.availableDiscardTypes);
+        setNopeWindow(null);
+      } else {
+        // Favor, 2-card, or 3-card combo — show target selection modal
+        setActionRequiresTarget(data.requestType);
+      }
     };
 
     const handleRequestFavorCard = (data: { sourceUserId: string, sourcePlayerName: string }) => {
       console.log("Someone wants a favor!", data);
-      setFavorRequest(data); // Pops up favor card selection modal
+      setFavorRequest(data);
+      setNopeWindow(null); // Nope window has resolved
+    };
+
+     /**
+     * Fired to all players when an action resolves with a message.
+     */
+    const handleActionResolved = (data: { message: string }) => {
+      console.log("Action resolved:", data.message);
+      setActionMessage(data.message);
+      setNopeWindow(null); // Nope window has resolved
+ 
+      // Auto-dismiss after 3 seconds
+      setTimeout(() => setActionMessage(null), 3000);
+    };
+ 
+    /**
+     * Fired to a specific player when they attempt an invalid action.
+     */
+    const handlePlayError = (data: { message: string }) => {
+      console.log("Play error:", data.message);
+      setPlayError(data.message);
+ 
+      // Auto-dismiss after 3 seconds
+      setTimeout(() => setPlayError(null), 3000);
     };
 
     // Turn the listeners on
     socket.on('update_hand', handleUpdateHand);
     socket.on('player_draws_card', handlePlayerDrawsCard);
     socket.on('defuse_requires_index', handleDefuseRequiresIndex);
-    socket.on('player_plays_cards', handlePlayerPlaysCards);
+    socket.on('player_plays_card', handlePlayerPlaysCard);
     socket.on('see_the_future', handleSeeTheFuture);
     socket.on('game_state_update', handleGameStateUpdate);
 
     socket.on('action_requires_target', handleActionRequiresTarget);
     socket.on('request_favor_card', handleRequestFavorCard);
+    socket.on('action_resolved', handleActionResolved);
+    socket.on('play_error', handlePlayError);
 
     // Turn the listeners off
     return () => {
       socket.off('update_hand', handleUpdateHand);
       socket.off('player_draws_card', handlePlayerDrawsCard);
       socket.off('defuse_requires_index', handleDefuseRequiresIndex);
-      socket.off('player_plays_cards', handlePlayerPlaysCards);
+      socket.off('player_plays_card', handlePlayerPlaysCard);
       socket.off('see_the_future', handleSeeTheFuture);
       socket.off('game_state_update', handleGameStateUpdate);
 
       socket.off('action_requires_target', handleActionRequiresTarget);
       socket.off('request_favor_card', handleRequestFavorCard);
+      socket.off('action_resolved', handleActionResolved);
+      socket.off('play_error', handlePlayError);
+
+      if (nopeTimerRef.current) clearTimeout(nopeTimerRef.current);
     };
   }, [socket]);
 
@@ -194,12 +284,24 @@ export function GameProvider({ children }: { children: ReactNode }) {
   };
 
   /**
+   * Emits a `play_nope` event to the server using the first Nope card in the player's hand.
+   */
+  const playNope = (roomId: string) => {
+    if (!socket || !currentFrontendUser) return;
+ 
+    const nopeCard = myHand.find(c => c.type === CardType.Nope);
+    if (!nopeCard) return;
+ 
+    socket.emit('play_nope', { roomId, userId: currentFrontendUser._id, cardId: nopeCard.id });
+  };
+
+  /**
    * Called by the UI after the user selects a target from the modal popup.
    */
   const submitTarget = (roomId: string, targetUserId: string, actionType: CardRequestType, requestedCardType?: CardType) => {
     if (!socket) return;
-    socket.emit('submit_target', { roomId, targetUserId, actionType, requestedCardType, userId: currentFrontendUser?._id });
-    setActionRequiresTarget(null); // Close the target modal
+    socket.emit('submit_target', { roomId, targetUserId, requestedCardType, userId: currentFrontendUser?._id });
+    setActionRequiresTarget(null); // Close the target selection modal
   };
 
   /**
@@ -208,12 +310,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const submitFavorCard = (roomId: string, cardId: number, sourceUserId: string) => {
     if (!socket) return;
     socket.emit('submit_favor_card', { roomId, cardId, sourceUserId, userId: currentFrontendUser?._id });
-    setFavorRequest(null); // Close the favor modal
+    setFavorRequest(null);
+  };
+
+  /**
+   * Called by the UI after the player picks a card type from the discard pile for a 5-card combo.
+   */
+  const submitFiveCardChoice = (roomId: string, cardType: CardType) => {
+    if (!socket) return;
+    socket.emit('submit_five_card_choice', { roomId, userId: currentFrontendUser?._id, cardType });
+    setFiveCardComboTypes(null);
   };
 
   return (
     <GameContext.Provider value={{ 
-      myHand, 
+myHand, 
       lastPlayedCard, 
       seeTheFutureCards,
       closeSeeTheFuture,
@@ -221,12 +332,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
       activeUserId,
       actionRequiresTarget,
       favorRequest,
+      nopeWindow,
+      fiveCardComboTypes,
+      actionMessage,
+      playError,
       defuseRequest,
       submitDefuseLocation,
       drawCard, 
       playCard,
+      playNope,
       submitTarget,
       submitFavorCard,
+      submitFiveCardChoice,
       requestInitialState,
     }}>
       {children}

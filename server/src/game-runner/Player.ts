@@ -14,8 +14,8 @@ export class Player {
     private _selectedCards: Card[];
     private _hasNope: boolean;
 
-    // Temporarily holds exploding kitten so cardId is preserved while waiting for slider input on where to insert it back into the deck
-    private _pendingDefuseKitten: Card | null;
+    // Temporarily holds exploding kauffman so cardId is preserved while waiting for slider input on where to insert it back into the deck
+    private _pendingDefuseKauffman: Card | null;
     
     /**
      * Constructs a new Player object with a given name and number - also intializes empty hand and selcted cards arrays.
@@ -30,11 +30,11 @@ export class Player {
         this._hand = [];
         this._selectedCards = [];
         this._hasNope = false;
-        this._pendingDefuseKitten = null;
+        this._pendingDefuseKauffman = null;
     }
 
     /**
-     * This function draws a card from the DrawDeck and adds it to this player's hand. Handles Exploding Kitten draws as well.
+     * This function draws a card from the DrawDeck and adds it to this player's hand. Handles Exploding Kauffman draws as well.
      * * @param game the game state before the draw
      */
     public drawCard(game: Game): {drawnCard: Card; exploded: boolean; defusePending?: boolean} {
@@ -51,14 +51,14 @@ export class Player {
 
         console.log(`${this.name} drew a ${drawnCard.type.toString()} card`);
 
-        if (drawnCard.type == CardType.Exploding_Kitten) {
+        if (drawnCard.type == CardType.Exploding_Kauffman) {
             let defuseIndex = this.hand.findIndex(c => c.type === CardType.Defuse);
 
             if (defuseIndex !== -1) {
                 let defuse: Card = this.hand.splice(defuseIndex, 1)[0];
                 game.discardPile.pile.push(defuse);
 
-                this.pendingDefuseKitten = drawnCard; // Store the drawn kitten while waiting for slider input
+                this.pendingDefuseKauffman = drawnCard; // Store the drawn kitten while waiting for slider input
                 
                 return {drawnCard, exploded: false, defusePending: true};
             } else {
@@ -88,15 +88,15 @@ export class Player {
     public resolveDefuse(game: Game, insertIndex: number) {
         if (game.activePlayer !== this) throw new Error("It is not your turn!");
         
-        if (!this.pendingDefuseKitten) {
-            throw new Error("No Exploding Kitten is currently pending defusal!");
+        if (!this.pendingDefuseKauffman) {
+            throw new Error("No Exploding Kauffman is currently pending defusal!");
         }
 
         // Put the original kitten back into the deck
-        game.drawDeck.replaceExplodingKitten(this.pendingDefuseKitten, insertIndex);
+        game.drawDeck.replaceExplodingKauffman(this.pendingDefuseKauffman, insertIndex);
 
         // Clear the pending kitten so it can't be reused
-        this.pendingDefuseKitten = null;
+        this.pendingDefuseKauffman = null;
 
         // progress turn
         game.numTurns--;
@@ -106,23 +106,24 @@ export class Player {
     }
 
     /**
-     * Determines if the SelectedCards are legal to play. Particularly useful for multi-card plays, but will also stop plays like 1 Beard_Cat.
+     * Determines if the SelectedCards are legal to play. Particularly useful for multi-card plays, but will also stop plays like 1 Bathroom_Drain_Bug.
      * * @returns true if legal, false if not
      */
     public checkMove(): boolean {
         switch (this.selectedCards.length) {
             case 1:
                 const illegalSingles: CardType[] = [
-                    CardType.Beard_Cat,
-                    CardType.Catermelon,
-                    CardType.Hairy_Potato_Cat,
-                    CardType.Rainbow_Ralphing_Cat,
-                    CardType.Tacocat,
+                    CardType.Bathroom_Drain_Bug,
+                    CardType.Mega_Bug,
+                    CardType.Legacy_Bug,
+                    CardType.Syntax_Bug,
+                    CardType.Heisenbug,
+                    CardType.Nope,
                     CardType.Defuse,
-                    CardType.Exploding_Kitten,
+                    CardType.Exploding_Kauffman,
                 ];
 
-                return illegalSingles.includes(this.selectedCards[0].type);
+                return !illegalSingles.includes(this.selectedCards[0].type);
 
             case 2:
                 return this.selectedCards[0].type === this.selectedCards[1].type;
@@ -131,11 +132,11 @@ export class Player {
                 return this.selectedCards[0].type === this.selectedCards[1].type && this.selectedCards[0].type === this.selectedCards[2].type;
 
             case 5:
-                const typeMap = new Map<CardType, number>();
+                const typeSet = new Set<CardType>();
                 for (let card of this.selectedCards) {
-                    typeMap.set(card.type, 0);
+                    typeSet.add(card.type);
                 }
-                return typeMap.size == 5;
+                return typeSet.size == 5;
         }
         return false;
     }
@@ -145,28 +146,22 @@ export class Player {
      */
     public executeFinalEffect(game: Game, cards: Card[]): {futureCards?: Card[]; cardRequest?: CardRequestType; lastPlayedCard?: Card} {
         
-        // Handle Multi-card combos first
-        if (cards.length === 2) {
-             return { cardRequest: CardRequestType.Two_Card_Combo, lastPlayedCard: cards[0] };
-        } else if (cards.length === 3) {
-             return { cardRequest: CardRequestType.Three_Card_Combo, lastPlayedCard: cards[0] };
+        // 5-card combo: player picks a card from the discard pile (post-resolution)
+        if (cards.length === 5) {
+            return { cardRequest: CardRequestType.Five_Card_Combo, lastPlayedCard: cards[0] };
         }
 
-        // Single card logic using your ORIGINAL switch block
+        // Single card logic 
         const card = cards[0];
         switch (card.type) {
             case CardType.Attack:
-                // NOTE: game.numTurns MUST be 0 before a player's chance to play/draw ends
-                if (game.numTurns > 1) {
-                    const storedAttacks = game.numTurns - 1;
-                    this.endTurn(game);
-                    game.numTurns = 2 + storedAttacks; // Set next player turns to attack + any stored attacks
-                    console.log(`${game.activePlayer} just attacked, but they still have more turns. Successfully stored attack info`);
-                } else {
-                    this.endTurn(game);
-                    game.numTurns = 2;
-                }
+                // Attacks stack by adding 2: playing an Attack ends your turn immediately
+                const currentTurns = game.numTurns;
+                this.endTurn(game);          // endTurn resets numTurns to 1, so we overwrite after
+                game.numTurns = currentTurns > 1 ? currentTurns + 2 : 2;
+                console.log(`${this.name} played an Attack ${game.activePlayer.name} now has ${game.numTurns} turns.`);
                 break;
+ 
 
             case CardType.Favor:
                 return { cardRequest: CardRequestType.Favor, lastPlayedCard: card };
@@ -235,6 +230,20 @@ export class Player {
         
         // Return null if the target didn't have the card
         return null; 
+    }
+
+    /**
+     * Resolves a Five Card Combo: This player picks a card type from the discard pile,
+     * and receives the first card of that type found.
+     */
+    public resolveFiveCardCombo(game: Game, requestedType: CardType): Card {
+        const cardIndex = game.discardPile.pile.findIndex(c => c.type === requestedType);
+        if (cardIndex === -1) {
+            throw new Error(`No ${requestedType} card found in the discard pile.`);
+        }
+        const chosenCard = game.discardPile.pile.splice(cardIndex, 1)[0];
+        this.hand.push(chosenCard);
+        return chosenCard;
     }
     
     /**
@@ -338,8 +347,8 @@ export class Player {
         return this._hand;
     }
 
-    public get pendingDefuseKitten(): Card | null {
-        return this._pendingDefuseKitten;
+    public get pendingDefuseKauffman(): Card | null {
+        return this._pendingDefuseKauffman;
     }
 
     /**
@@ -387,7 +396,7 @@ export class Player {
         this._hasNope = value;
     }
 
-    public set pendingDefuseKitten(value: Card | null) {
-        this._pendingDefuseKitten = value;
+    public set pendingDefuseKauffman(value: Card | null) {
+        this._pendingDefuseKauffman = value;
     }
 }
