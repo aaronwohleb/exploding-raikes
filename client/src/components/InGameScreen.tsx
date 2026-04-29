@@ -29,18 +29,38 @@ export default function InGameScreen() {
     requestInitialState
   } = useGame();
 
-  const getCardDescription = (type: string) => {
+  const getCardDescription = (type: string, selectedCount: number = 1, isAllSameType: boolean = true, uniqueCount: number = 1) => {
+
+    if (isAllSameType) {
+      if (selectedCount === 2) {
+        return "TWO CARD COMBO: Play 2 of the same card to steal a random card from an opponent.";
+      }else if (selectedCount === 3) {
+        return "THREE CARD COMBO: Play 3 of the same card to choose a card from an opponent.";
+      }else{
+
+      }
+    
+  }
+
+  if (selectedCount === 5 && uniqueCount === 5) {
+    return "FIVE CARD COMBO: Play 5 different cards to take any card from the discard pile.";
+  }
   const descriptions: Record<string, string> = {
     Attack: "End your turn without drawing. Force the next player to take two turns.",
     Defuse: "The only card that can save you from an Exploding Kauffman.",
     Skip: "Immediately end your turn without drawing a card.",
     Favor: "Force another player to give you one card of their choice.",
-    See_The_Future: "Privately view the top 3 cards of the deck.",
+    See_the_Future: "Privately view the top 3 cards of the deck.",
     Shuffle: "Shuffle the Draw Pile.",
     Nope: "Stop any action except for an Exploding Kauffman",
     Two_Card_Combo: "Play 2 of the same card type to steal a random card from an opponent's hand.",
     Three_Card_Combo: "Play 3 of the same card type to choose a card of from an opponent's hand if they have one",
     Five_Card_Combo: "Play 5 different card types to take any card from the discard pile",
+    Legacy_Bug: "A bug that just won't move on. Useless on it's own, but powerful when used in combos.",
+    Bathroom_Drain_Bug: "A nasty disgusting bug that crawls out of your drain. Useless on it's own, but powerful when used in combos.",
+    Mega_Bug: "The Mega Bug like to live underground and host parties. Useless on it's own, but powerful when used in combos.",
+    Syntax_Bug: "a dreded bug whose presnce is revealed by the dreaded red squiggly line. Useless on it's own, but powerful when used in combos.",
+    Heisenbug: "A sneaky bug that changes its behavior when you try to observe it. Useless on it's own, but powerful when used in combos.",
   };
   return descriptions[type] || "A mysterious card with unknown powers.";
 };
@@ -100,7 +120,7 @@ export default function InGameScreen() {
     >
 
     {/* --- INFO BUTTON --- */}
-      {selectedCardIds.length === 1 && (
+      {selectedCardIds.length >= 1 && (
         <motion.button 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -390,14 +410,41 @@ export default function InGameScreen() {
             <div className="mb-6">
               <CardFront card={selectedBaseCard} animate={false} className="w-40 h-56 mx-auto shadow-2xl" />
             </div>
-            
-            <h3 className="text-4xl font-bold uppercase text-[#0F0F0F] mb-2">
-              {selectedBaseCard.type.replace(/_/g, " ")}
-            </h3>
-            
-            <p className="text-gray-600 text-lg leading-relaxed mb-8 font-sans">
-              {getCardDescription(selectedBaseCard.type)}
-            </p>
+
+            {(() => {
+              const selectedCards = myHand.filter(c => selectedCardIds.includes(c.id));
+              const count = selectedCards.length;
+              const uniqueTypes = new Set(selectedCards.map(c => c.type)).size;
+              const allSame = uniqueTypes === 1;
+
+              const isFiveCardCombo = count === 5 && uniqueTypes === 5;
+              const isMultiCombo = allSame && (count === 2 || count === 3);
+              const isValidCombo = isFiveCardCombo || isMultiCombo;
+
+              const displayTitle = isValidCombo 
+                ? `${count} Card Combo` 
+                : selectedBaseCard.type.replace(/_/g, " ");
+
+              const displayDescription = getCardDescription(
+                selectedBaseCard.type, 
+                count, 
+                allSame, 
+                uniqueTypes
+              );
+  
+
+              
+              return (
+              <>
+                <h3 className="text-4xl font-bold uppercase text-[#0F0F0F] mb-2">
+                  {displayTitle}
+                </h3>
+                <p className="text-gray-600 text-lg leading-relaxed mb-8 font-sans">
+                  {displayDescription}
+                </p>
+              </>
+              );
+      })()}
 
             <button
               onClick={() => setShowInfoModal(false)}
