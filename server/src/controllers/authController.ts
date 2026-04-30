@@ -51,6 +51,23 @@ export const registerUser = async (req: Request, res: Response) => {
   }
 };
 
+// GET CURRENT USER FROM TOKEN
+export const getMe = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+    const user = await BackendUser.findById(decoded.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(toFrontendUser(user));
+  } catch (error) {
+    res.status(401).json({ message: 'Invalid or expired token' });
+  }
+};
+
 // LOGIN USER
 export const loginUser = async (req: Request, res: Response) => {
   try {

@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { GameManager } from '../game-runner/GameManager';
 import { Card, CardRequestType, CardType } from '../types/types';
 import { Game } from '../game-runner/Game';
+import { incrementStats } from '../controllers/userController';
 
 /**
  * Registers all game-related socket events on the server.
@@ -188,16 +189,22 @@ export function setupGameSockets(io: Server) {
              // player that exploded; tells entire room who exploded
              io.to(`lobby:${roomId}`).emit('player_exploded', { playerId: userId, playerName: player.name });
 
+             // Update the exploded player's stats
+             incrementStats(userId, { gamesPlayed: 1, timesExploded: 1 }).catch(console.error);
+
              // tells entire room the game is over
              if (game.playerList.length === 1) {
-                io.to(`lobby:${roomId}`).emit('game_over', { 
-                    winnerId: game.playerList[0].userId, 
-                    winnerName: game.playerList[0].name 
+                const winner = game.playerList[0];
+                io.to(`lobby:${roomId}`).emit('game_over', {
+                    winnerId: winner.userId,
+                    winnerName: winner.name
                 });
+                // Update the winner's stats
+                incrementStats(winner.userId, { gamesPlayed: 1, wins: 1 }).catch(console.error);
             } else if (game.playerList.length === 0) {
-                io.to(`lobby:${roomId}`).emit('game_over', { 
-                    winnerId: null, 
-                    winnerName: 'Nobody' 
+                io.to(`lobby:${roomId}`).emit('game_over', {
+                    winnerId: null,
+                    winnerName: 'Nobody'
                 });
             }
 

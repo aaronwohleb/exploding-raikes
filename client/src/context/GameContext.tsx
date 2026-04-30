@@ -100,6 +100,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setExplodedPlayerId(null);
     setEliminatedPlayerIds([]);
     setExplosionNotification(null);
+    setLastPlayedCard(null);
     };
 
 

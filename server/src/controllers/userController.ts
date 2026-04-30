@@ -27,6 +27,18 @@ export const updateUsername = async (req: Request, res: Response) => {
   }
 };
 
+// INCREMENT PLAYER STATS
+export const incrementStats = async (
+  userId: string,
+  increments: { gamesPlayed?: number; wins?: number; timesExploded?: number }
+) => {
+  const inc: Record<string, number> = {};
+  if (increments.gamesPlayed)   inc['stats.gamesPlayed']   = increments.gamesPlayed;
+  if (increments.wins)          inc['stats.wins']          = increments.wins;
+  if (increments.timesExploded) inc['stats.timesExploded'] = increments.timesExploded;
+  await BackendUser.findByIdAndUpdate(userId, { $inc: inc });
+};
+
 // DELETE ACCOUNT
 export const deleteAccount = async (req: Request, res: Response) => {
   try {

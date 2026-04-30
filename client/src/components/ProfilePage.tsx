@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { currentFrontendUser, logout, updateUsername, deleteAccount } = useAuth();
+  const { currentFrontendUser, logout, updateUsername, refreshUser, deleteAccount } = useAuth();
 
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [usernameInput, setUsernameInput] = useState(currentFrontendUser?.username ?? "");
@@ -18,6 +18,9 @@ export default function ProfilePage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  useEffect(() => {
+    refreshUser();
+  }, []);
   useEffect(() => {
     if (!currentFrontendUser) {
       navigate("/");

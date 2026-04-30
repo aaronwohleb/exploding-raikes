@@ -21,6 +21,12 @@ apiClient.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
+export const getMe = async (): Promise<FrontendUser> => {
+  const response = await apiClient.get<FrontendUser>('/me');
+  return response.data;
+};
+
+
 // AUTH SERVICES
 
 /**
