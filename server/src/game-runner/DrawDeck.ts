@@ -1,7 +1,7 @@
 import { Card, CardType } from '../types/types';
 import { Game } from './Game';
 /**
- * Represents a deck of Exploding Kittens cards with the functionality of the game's draw pile.
+ * Represents a deck of Exploding Kauffman cards with the functionality of the game's draw pile.
  */
 export class DrawDeck {
 
@@ -9,18 +9,18 @@ export class DrawDeck {
 
     private readonly HandSize: number = 7;
     /**
-     * Builds a full deck of Exploding Kittens Cards.
+     * Builds a full deck of Exploding Kauffman Cards.
      */
     public constructor(game: Game) {
         this._deck = [];
         // Make full deck of cards (Hard coded and subject to change)
         const cardConfigs = [
             { type: CardType.Attack, count: 4 },
-            { type: CardType.Beard_Cat, count: 4 },
-            { type: CardType.Catermelon, count: 4 },
-            { type: CardType.Hairy_Potato_Cat, count: 4 },
-            { type: CardType.Rainbow_Ralphing_Cat, count: 4 },
-            { type: CardType.Tacocat, count: 4 },
+            { type: CardType.Bathroom_Drain_Bug, count: 4 },
+            { type: CardType.Mega_Bug, count: 4 },
+            { type: CardType.Legacy_Bug, count: 4 },
+            { type: CardType.Syntax_Bug, count: 4 },
+            { type: CardType.Heisenbug, count: 4 },
             { type: CardType.Favor, count: 4 },
             { type: CardType.Nope, count: 5 },
             { type: CardType.See_the_Future, count: 5 },
@@ -47,7 +47,7 @@ export class DrawDeck {
 
         const extraConfigs = [
             { type: CardType.Defuse, count: 8 - game.playerList.length },
-            { type: CardType.Exploding_Kitten, count: 4 }
+            { type: CardType.Exploding_Kauffman, count: 4 }
         ];
 
         for (const config of extraConfigs) {
@@ -65,7 +65,7 @@ export class DrawDeck {
     }
 
     /**
-     * Helper function to deal a starting hand to each player. A starting hand should have 7 non-defuse, non-exploding kitten cards, and 1 defuse.
+     * Helper function to deal a starting hand to each player. A starting hand should have 7 non-defuse, non-exploding kauffman cards, and 1 defuse.
      */
     public dealCards(game: Game, currId: number) {
         for (let i = 0; i < this.HandSize; i++) {
@@ -85,12 +85,12 @@ export class DrawDeck {
 
 
     /**
-     * When an Exploding Kitten is drawn and defused, this function puts the card back into the draw pile at the location of the player's choice.
-     * 
-     * @param kitten the Exploding Kitten that was drawn
+     * When an Exploding Kauffman is drawn and defused, this function puts the card back into the draw pile at the location of the player's choice.
+     *
+     * @param kitten the Exploding Kauffman that was drawn
      * @param index the spot in the deck to replace it
      */
-    public replaceExplodingKitten(kitten: Card, index: number) {
+    public replaceExplodingKauffman(kitten: Card, index: number) {
         try {
             this.deck.splice(index, 0, kitten);
         } catch (error) {

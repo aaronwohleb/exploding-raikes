@@ -44,13 +44,13 @@ export interface LobbyState {
  */
 export enum CardType {
   Attack = 'Attack',
-  Beard_Cat = 'Beard_Cat',
-  Catermelon = 'Catermelon',
-  Hairy_Potato_Cat = 'Hairy_Potato_Cat',
-  Rainbow_Ralphing_Cat = 'Rainbow_Ralphing_Cat',
-  Tacocat = 'Tacocat',
+  Bathroom_Drain_Bug = 'Bathroom_Drain_Bug',
+  Mega_Bug = 'Mega_Bug',
+  Legacy_Bug = 'Legacy_Bug',
+  Syntax_Bug = 'Syntax_Bug',
+  Heisenbug = 'Heisenbug',
   Defuse = 'Defuse',
-  Exploding_Kitten = 'Exploding_Kitten',
+  Exploding_Kauffman = 'Exploding_Kauffman',
   Favor = 'Favor',
   Nope = 'Nope',
   See_the_Future = 'See_the_Future',
@@ -65,7 +65,8 @@ export enum CardRequestType {
   Favor = 'Favor',
   Two_Card_Combo = 'Two_Card_Combo',
   Three_Card_Combo = 'Three_Card_Combo',
-  Replace_Exploding_Kitten = 'Replace_Exploding_Kitten',
+  Five_Card_Combo = 'Five_Card_Combo',
+  Replace_Exploding_Kauffman = 'Replace_Exploding_Kauffman',
 }
 
 /**
@@ -75,4 +76,16 @@ export interface Card {
   id: number;
   name: string;
    type: CardType;
+}
+
+/**
+ * used to drive the Nope window UI.
+ */
+export interface NopeWindowState {
+  playerId: string;
+  cards: Card[];
+  targetPlayerName?: string;
+  actionType?: CardRequestType;
+  startedAt: number;
+
 }
