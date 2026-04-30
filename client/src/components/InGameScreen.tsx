@@ -48,7 +48,7 @@ myHand,
       if (selectedCount === 2) {
         return "TWO CARD COMBO: Play 2 of the same card to steal a random card from an opponent.";
       }else if (selectedCount === 3) {
-        return "THREE CARD COMBO: Play 3 of the same card to choose a card from an opponent.";
+        return "THREE CARD COMBO: Play 3 of the same card type to choose a card from an opponent's hand if they have one";
       }else{
 
       }
@@ -61,18 +61,15 @@ myHand,
   const descriptions: Record<string, string> = {
     Attack: "End your turn without drawing. Force the next player to take two turns.",
     Defuse: "The only card that can save you from an Exploding Kauffman.",
-    Skip: "Immediately end your turn without drawing a card.",
+    Skip: "Immediately end a turn without drawing a card.",
     Favor: "Force another player to give you one card of their choice.",
     See_the_Future: "Privately view the top 3 cards of the deck.",
     Shuffle: "Shuffle the Draw Pile.",
-    Nope: "Stop any action except for an Exploding Kauffman",
-    Two_Card_Combo: "Play 2 of the same card type to steal a random card from an opponent's hand.",
-    Three_Card_Combo: "Play 3 of the same card type to choose a card of from an opponent's hand if they have one",
-    Five_Card_Combo: "Play 5 different card types to take any card from the discard pile",
-    Legacy_Bug: "A bug that just won't move on. Useless on it's own, but powerful when used in combos.",
+    Nope: "Stop any action except for an Exploding Kauffman or defuse.",
+    Legacy_Bug: "A bug that needs to be put in a retirement home. Useless on it's own, but powerful when used in combos.",
     Bathroom_Drain_Bug: "A nasty disgusting bug that crawls out of your drain. Useless on it's own, but powerful when used in combos.",
-    Mega_Bug: "The Mega Bug like to live underground and host parties. Useless on it's own, but powerful when used in combos.",
-    Syntax_Bug: "a dreded bug whose presnce is revealed by the dreaded red squiggly line. Useless on it's own, but powerful when used in combos.",
+    Mega_Bug: "The Mega Bug like to live in Megalounge and host mega parties. Useless on it's own, but powerful when used in combos.",
+    Syntax_Bug: "a bug whose presnce is revealed by the unfortunate red squiggly line. Useless on it's own, but powerful when used in combos.",
     Heisenbug: "A sneaky bug that changes its behavior when you try to observe it. Useless on it's own, but powerful when used in combos.",
   };
   return descriptions[type] || "A mysterious card with unknown powers.";
@@ -382,11 +379,24 @@ myHand,
       </div>
 
       {/* Explosion Notification */}
-      {explosionNotification && (
-          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 bg-[#B81C27] text-[#FCF8EE] px-8 py-4 rounded-2xl shadow-2xl text-2xl font-bold uppercase tracking-widest animate-bounce">
+      <AnimatePresence>
+        {explosionNotification && (
+          <motion.div
+            key="explosion-notification"
+            // Move the -50% translation into Framer Motion's state
+            initial={{ opacity: 0, y: -40, x: "-50%", scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, x: "-50%", scale: 1 }}
+            exit={{ opacity: 0, y: -40, x: "-50%", scale: 0.9 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            // Removed -translate-x-1/2 from className
+            className="absolute top-6 left-1/2 z-[70] pointer-events-none"
+          >
+            <div className="bg-[#B81C27] text-[#FCF8EE] px-8 py-4 rounded-2xl shadow-2xl text-2xl font-bold uppercase tracking-widest animate-bounce">
               {explosionNotification}
-          </div>
-      )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
 
       {/* INTERACTIVE MODALS */}
@@ -499,7 +509,7 @@ myHand,
             )}
 
             <div className="flex flex-col gap-4">
-              {opponents.map(opp => (
+              {opponents.filter(opp => !eliminatedPlayerIds.includes(opp._id)).map(opp => (
                 <motion.button
                   key={opp._id}
                   whileHover={{ scale: 1.02 }}
@@ -631,6 +641,9 @@ myHand,
               Back to Game
             </button>
           </motion.div>
+        </div>
+      )}
+
       {/* Player Loss Modal */}
       {explodedPlayerId === currentFrontendUser?._id && !gameOver && (
         <div className="absolute inset-0 bg-red-900/90 backdrop-blur-sm flex items-center justify-center z-50">

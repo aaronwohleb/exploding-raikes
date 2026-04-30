@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { FrontendUser }  from "../types/types"
 import * as api from '../services/api';
 
@@ -11,7 +11,7 @@ interface AuthContextType {
   logout: () => void;
   updateUsername: (newUsername: string) => Promise<void>;
 
-  updateUser?: (patch: Partial<FrontendUser>) => void; // Optional function to update user info in context
+  refreshUser: () => void; // function to pull user info from server and update context
   patchUser: (patch: Partial<FrontendUser>) => void;
   /**
    * Permanently deletes the user's account on the backend, clears token and state.
@@ -24,6 +24,19 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FrontendUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // On mount, attempt to restore the session from a stored JWT
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return;
+    }
+    api.getMe()
+      .then((frontendUser) => setUser(frontendUser))
+      .catch(() => localStorage.removeItem('token')) // expired or invalid
+      .finally()
+  }, []);
 
   const login = async (email: string, password: string) => {
     const {frontendUser, token} = await api.loginUser(email, password);
@@ -47,7 +60,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const updated = await api.updateUsername(user._id, newUsername);
     setUser(updated); // Sync context with server's authoritative response
   };
- 
+
+  const refreshUser = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error("No token found");
+      
+      const updatedUser = await api.getMe();
+      setUser(updatedUser); 
+    } catch (error) {
+      console.error("Failed to refresh user data:", error);
+    }
+  };
+
   const patchUser = (patch: Partial<FrontendUser>) => {
     setUser((prev) => {
       if (!prev) return prev;
@@ -63,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ currentFrontendUser: user, login, register, logout, updateUsername, patchUser, deleteAccount }}>
+    <AuthContext.Provider value={{ currentFrontendUser: user, login, register, logout, updateUsername, refreshUser, patchUser, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );
