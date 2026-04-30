@@ -1,2 +1,2 @@
 # exploding-raikes
-Web based multiplayer version of Exploding Kittens, built with the MERN stack.
+Web based multiplayer version of Exploding Kauffman, built with the MERN stack.

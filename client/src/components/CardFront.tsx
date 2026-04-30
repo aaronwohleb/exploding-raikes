@@ -20,19 +20,19 @@ import favorBase from '../assets/favorBase.png';
 // Map card types to their images
 const cardImageMap: Record<string, string> = {
   'Attack': attackBase,
-  'Beard_Cat': bathroomDrainBugBase,
+  'Bathroom_Drain_Bug': bathroomDrainBugBase,
   'Defuse': defuseBase,
   'Exploding_Cards': explodingCardsmock,
-  'Exploding_Kitten': explodingKauffmanBase,
-  'Catermelon': megaBugBase,
+  'Exploding_Kauffman': explodingKauffmanBase,
+  'Mega_Bug': megaBugBase,
   'Nope': nopeBase,
   'See_the_Future': seeTheFutureBase,
   'Shuffle': shuffleBase,
   'Skip': skipBase,
-  'Rainbow_Ralphing_Cat': syntaxBugBase,
+  'Syntax_Bug': syntaxBugBase,
   'Favor': favorBase,
-  'Hairy_Potato_Cat': legacyBugBase,
-  'Tacocat': heisenbugBase,
+  'Legacy_Bug': legacyBugBase,
+  'Heisenbug': heisenbugBase,
 };
 
 //Card Front proops, all importnat stuff, save for the ? which are all optional extras

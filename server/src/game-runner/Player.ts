@@ -14,13 +14,12 @@ export class Player {
     private _selectedCards: Card[];
     private _hasNope: boolean;
 
-    // Temporarily holds exploding kitten so cardId is preserved while waiting for slider input on where to insert it back into the deck
-    private _pendingDefuseKitten: Card | null;
+    // Temporarily holds exploding kauffman so cardId is preserved while waiting for slider input on where to insert it back into the deck
+    private _pendingDefuseKauffman: Card | null;
     
     /**
      * Constructs a new Player object with a given name and number - also intializes empty hand and selcted cards arrays.
-     * 
-     * @param name the player's name
+     * * @param name the player's name
      * @param playerNum the player's numbner in play order
      * @param userId the player's user ID
      */
@@ -31,13 +30,12 @@ export class Player {
         this._hand = [];
         this._selectedCards = [];
         this._hasNope = false;
-        this._pendingDefuseKitten = null;
+        this._pendingDefuseKauffman = null;
     }
 
     /**
-     * This function draws a card from the DrawDeck and adds it to this player's hand. Handles Exploding Kitten draws as well.
-     * 
-     * @param game the game state before the draw
+     * This function draws a card from the DrawDeck and adds it to this player's hand. Handles Exploding Kauffman draws as well.
+     * * @param game the game state before the draw
      */
     public drawCard(game: Game): {drawnCard: Card; exploded: boolean; defusePending?: boolean} {
         //TODO: Determine if async or if using websockets
@@ -53,14 +51,14 @@ export class Player {
 
         console.log(`${this.name} drew a ${drawnCard.type.toString()} card`);
 
-        if (drawnCard.type == CardType.Exploding_Kitten) {
+        if (drawnCard.type == CardType.Exploding_Kauffman) {
             let defuseIndex = this.hand.findIndex(c => c.type === CardType.Defuse);
 
             if (defuseIndex !== -1) {
                 let defuse: Card = this.hand.splice(defuseIndex, 1)[0];
                 game.discardPile.pile.push(defuse);
 
-                this.pendingDefuseKitten = drawnCard; // Store the drawn kitten while waiting for slider input
+                this.pendingDefuseKauffman = drawnCard; // Store the drawn kitten while waiting for slider input
                 
                 return {drawnCard, exploded: false, defusePending: true};
             } else {
@@ -91,15 +89,15 @@ export class Player {
     public resolveDefuse(game: Game, insertIndex: number) {
         if (game.activePlayer !== this) throw new Error("It is not your turn!");
         
-        if (!this.pendingDefuseKitten) {
-            throw new Error("No Exploding Kitten is currently pending defusal!");
+        if (!this.pendingDefuseKauffman) {
+            throw new Error("No Exploding Kauffman is currently pending defusal!");
         }
 
         // Put the original kitten back into the deck
-        game.drawDeck.replaceExplodingKitten(this.pendingDefuseKitten, insertIndex);
+        game.drawDeck.replaceExplodingKauffman(this.pendingDefuseKauffman, insertIndex);
 
         // Clear the pending kitten so it can't be reused
-        this.pendingDefuseKitten = null;
+        this.pendingDefuseKauffman = null;
 
         // progress turn
         game.numTurns--;
@@ -109,24 +107,24 @@ export class Player {
     }
 
     /**
-     * Determines if the SelectedCards are legal to play. Particularly useful for multi-card plays, but will also stop plays like 1 Beard_Cat.
-     * 
-     * @returns true if legal, false if not
+     * Determines if the SelectedCards are legal to play. Particularly useful for multi-card plays, but will also stop plays like 1 Bathroom_Drain_Bug.
+     * * @returns true if legal, false if not
      */
     public checkMove(): boolean {
         switch (this.selectedCards.length) {
             case 1:
                 const illegalSingles: CardType[] = [
-                    CardType.Beard_Cat,
-                    CardType.Catermelon,
-                    CardType.Hairy_Potato_Cat,
-                    CardType.Rainbow_Ralphing_Cat,
-                    CardType.Tacocat,
+                    CardType.Bathroom_Drain_Bug,
+                    CardType.Mega_Bug,
+                    CardType.Legacy_Bug,
+                    CardType.Syntax_Bug,
+                    CardType.Heisenbug,
+                    CardType.Nope,
                     CardType.Defuse,
-                    CardType.Exploding_Kitten,
+                    CardType.Exploding_Kauffman,
                 ];
 
-                return illegalSingles.includes(this.selectedCards[0].type);
+                return !illegalSingles.includes(this.selectedCards[0].type);
 
             case 2:
                 return this.selectedCards[0].type === this.selectedCards[1].type;
@@ -135,105 +133,43 @@ export class Player {
                 return this.selectedCards[0].type === this.selectedCards[1].type && this.selectedCards[0].type === this.selectedCards[2].type;
 
             case 5:
-                const typeMap = new Map<CardType, number>();
+                const typeSet = new Set<CardType>();
                 for (let card of this.selectedCards) {
-                    typeMap.set(card.type, 0);
+                    typeSet.add(card.type);
                 }
-                return typeMap.size == 5;
+                return typeSet.size == 5;
         }
         return false;
     }
 
     /**
-     * Handles logic for multi-card combos. Designed to hand off card functionality to playCard() for single-card plays.
-     * 
-     * @param game the game state
-     * @returns an array of cards for STF, or the type of request needed to send to the frontend for plays like Favor or Combos and 
-     * the last played card for frontend display purposes, if applicable
+     * Executes the actual effect of a card play after the Nope window has expired.
      */
-    public playSelectedCards(game: Game, cardIds: number[]): {futureCards?: Card[]; cardRequest?: CardRequestType; lastPlayedCard?: Card} {
-        if (game.activePlayer !== this) {
-            throw new Error("It is not your turn!");
-        }
-        const cardsToPlay = this.hand.filter(c => cardIds.includes(c.id));
-
-        if (cardsToPlay.length !== cardIds.length) {
-            console.error("One or more selected cards were not found in the player's hand.");
-            return { };
+    public executeFinalEffect(game: Game, cards: Card[]): {futureCards?: Card[]; cardRequest?: CardRequestType; lastPlayedCard?: Card} {
+        
+        // 5-card combo: player picks a card from the discard pile (post-resolution)
+        if (cards.length === 5) {
+            return { cardRequest: CardRequestType.Five_Card_Combo, lastPlayedCard: cards[0] };
         }
 
-        switch (cardsToPlay.length) {
-            case 1:
-                return this.playCard(cardsToPlay[0], game);
-
-            case 2:
-                // Two Card Combo
-                if (cardsToPlay[0].type === cardsToPlay[1].type) {
-                this.discardCards(cardsToPlay, game);
-                return { cardRequest: CardRequestType.Two_Card_Combo, lastPlayedCard: cardsToPlay[0] };
-            }
-
-            case 3: 
-                if (cardsToPlay[0].type === cardsToPlay[1].type && cardsToPlay[0].type === cardsToPlay[2].type) {
-                this.discardCards(cardsToPlay, game);
-                return { cardRequest: CardRequestType.Three_Card_Combo, lastPlayedCard: cardsToPlay[0] };
-            }
-            case 5:
-                //TODO: Do five-card combo (Later)
-                for (let card of this.selectedCards) {
-                    this.hand = this.hand.filter(currCard => currCard !== card);
-                    game.discardPile.pile.unshift(card);
-                }
-                // Discard draw
-                return {};
-                
-        }
-        console.error("This card play was invalid. (Not 1, 2, 3, 5 cards)");
-        return {};
-    }
-
-    /**
-     * This function applies the Card's effects to the game.
-     * 
-     * @param card the card being played
-     * @param game the game being played on which to apply the Card's effects
-     * @returns an array of cards for STF, or the type of request needed to send to the frontend for plays like Favor or Combos and 
-     * the last played card for frontend display purposes, if applicable
-     */
-    public playCard(card: Card, game: Game): {futureCards?: Card[]; cardRequest?: CardRequestType; lastPlayedCard?: Card} {
-
-        const illegalSingles: CardType[] = [
-            CardType.Beard_Cat, CardType.Catermelon, CardType.Hairy_Potato_Cat,
-            CardType.Rainbow_Ralphing_Cat, CardType.Tacocat, CardType.Defuse, CardType.Exploding_Kitten
-        ];
-
-        if (illegalSingles.includes(card.type)) {
-            console.warn(`You cannot play ${card.type} alone`);
-            return { };
-        }
-
-        // Handle card effects and discard card
-        this.discardCards([card], game);
-
+        // Single card logic 
+        const card = cards[0];
         switch (card.type) {
-            case CardType.Attack: 
-                // NOTE: game.numTurns MUST be 0 before a player's chance to play/draw ends
-                if (game.numTurns > 1) {
-                    const storedAttacks = game.numTurns - 1;
-                    this.endTurn(game);
-                    game.numTurns = 2 + storedAttacks; // Set next player turns to attack + any stored attacks
-                    console.log(`${game.activePlayer} just attacked, but they still have more turns. Successfully stored attack info`);
-                } else {
-                    this.endTurn(game);
-                    game.numTurns = 2 
-                }
-                break;  
+            case CardType.Attack:
+                // Attacks stack by adding 2: playing an Attack ends your turn immediately
+                const currentTurns = game.numTurns;
+                this.endTurn(game);          // endTurn resets numTurns to 1, so we overwrite after
+                game.numTurns = currentTurns > 1 ? currentTurns + 2 : 2;
+                console.log(`${this.name} played an Attack ${game.activePlayer.name} now has ${game.numTurns} turns.`);
+                break;
+ 
 
             case CardType.Favor:
                 return { cardRequest: CardRequestType.Favor, lastPlayedCard: card };
-                
+
             case CardType.Nope:
-                //TODO: Implement before R2
+                // Logically shouldn't reach here as executeFinalEffect is for the action being noped
+                break;
 
             case CardType.See_the_Future:
                 let returnCards: Card[] = game.drawDeck.seeFuture(3);
@@ -252,10 +188,9 @@ export class Player {
                 }
                 console.log(`${game.activePlayer.name} has skipped a turn`);
                 break;
-
         }
-        // Return the valid card play for frontend to display, even if there is no additional info to send
-        return {lastPlayedCard: card};
+
+        return { lastPlayedCard: card };
     }
 
     // --- RESOLUTION FUNCTIONS FOR FRONTEND QUERIES ---
@@ -296,6 +231,20 @@ export class Player {
         
         // Return null if the target didn't have the card
         return null; 
+    }
+
+    /**
+     * Resolves a Five Card Combo: This player picks a card type from the discard pile,
+     * and receives the first card of that type found.
+     */
+    public resolveFiveCardCombo(game: Game, requestedType: CardType): Card {
+        const cardIndex = game.discardPile.pile.findIndex(c => c.type === requestedType);
+        if (cardIndex === -1) {
+            throw new Error(`No ${requestedType} card found in the discard pile.`);
+        }
+        const chosenCard = game.discardPile.pile.splice(cardIndex, 1)[0];
+        this.hand.push(chosenCard);
+        return chosenCard;
     }
     
     /**
@@ -398,8 +347,8 @@ export class Player {
         return this._hand;
     }
 
-    public get pendingDefuseKitten(): Card | null {
-        return this._pendingDefuseKitten;
+    public get pendingDefuseKauffman(): Card | null {
+        return this._pendingDefuseKauffman;
     }
 
     /**
@@ -447,7 +396,7 @@ export class Player {
         this._hasNope = value;
     }
 
-    public set pendingDefuseKitten(value: Card | null) {
-        this._pendingDefuseKitten = value;
+    public set pendingDefuseKauffman(value: Card | null) {
+        this._pendingDefuseKauffman = value;
     }
 }

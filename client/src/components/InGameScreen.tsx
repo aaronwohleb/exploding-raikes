@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useNavigate } from 'react-router-dom';
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useGame } from "../context/GameContext";
 import { useAuth } from "../context/AuthContext";
 import { useLobby } from "../context/LobbyContext";
@@ -15,25 +15,31 @@ import { CardType } from "../types/types";
 //Player main screen definition
 export default function InGameScreen() {
   const { 
-    myHand, 
+myHand, 
     lastPlayedCard, 
     deckCount, 
     activeUserId,
     defuseRequest,
     submitDefuseLocation,
-    playCard, 
+    playCard,
+    playNope,
     actionRequiresTarget, 
-    favorRequest, 
+    favorRequest,
+    nopeWindow,
+    fiveCardComboTypes,
+    actionMessage,
+    playError,
     seeTheFutureCards,
     closeSeeTheFuture,
     submitTarget, 
     submitFavorCard,
-    requestInitialState,
     dismissExplosion,
     gameOver,
     explodedPlayerId,
     eliminatedPlayerIds,
     explosionNotification,
+    submitFiveCardChoice,
+    requestInitialState
   } = useGame();
 
   
@@ -61,11 +67,22 @@ export default function InGameScreen() {
 
   const isMyTurn = activeUserId === currentFrontendUser?._id;
 
+  // Check if this player has a Nope card in hand
+  const hasNopeCard = myHand.some(c => c.type === CardType.Nope);
+
+  /**
+   * Look up a player's display name from the lobby player list.
+   */
+  const getPlayerName = (playerId: string): string => {
+    const player = currentLobby?.players.find(p => p._id === playerId);
+    return player?.username || "Unknown";
+  };
+
   // Toggle card selection
   const handleCardClick = (cardId: number) => {
-    setSelectedCardIds((prev) => 
-      prev.includes(cardId) 
-        ? prev.filter(id => id !== cardId) 
+    setSelectedCardIds((prev) =>
+      prev.includes(cardId)
+        ? prev.filter(id => id !== cardId)
         : [...prev, cardId]
     );
   };
@@ -88,6 +105,83 @@ export default function InGameScreen() {
         fontFamily: '"bebas-neue-pro-semiexpanded", sans-serif',
       }}
     >
+      {/* --- action messages + play errors --- */} 
+      {/* Will consolidate with emmas later */}
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-3 pointer-events-none">
+        <AnimatePresence>
+          {actionMessage && (
+            <motion.div
+              key="action-msg"
+              initial={{ y: -40, opacity: 0, scale: 0.9 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: -40, opacity: 0, scale: 0.9 }}
+              className="bg-[#FCF8EE] text-[#0F0F0F] px-10 py-4 rounded-2xl shadow-2xl border-2 border-[#B81C27]"
+            >
+              <p className="text-2xl font-bold uppercase tracking-[0.02em] text-center">
+                {actionMessage}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+ 
+        <AnimatePresence>
+          {playError && (
+            <motion.div
+              key="play-error"
+              initial={{ y: -40, opacity: 0, scale: 0.9 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: -40, opacity: 0, scale: 0.9 }}
+              className="bg-[#B81C27] text-[#FCF8EE] px-8 py-3 rounded-2xl shadow-2xl"
+            >
+              <p className="text-xl font-bold uppercase tracking-[0.02em] text-center">
+                {playError}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+ 
+      {/* --- NOPE WINDOW BANNER --- */}
+      <AnimatePresence>
+        {nopeWindow && (
+          <motion.div
+            key="nope-banner"
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -100, opacity: 0 }}
+            transition={{ type: "spring", damping: 20 }}
+            className="absolute top-0 left-0 right-0 z-50 bg-[#0F0F0F]/90 backdrop-blur-md border-b-4 border-[#B81C27] px-8 py-5"
+          >
+            <div className="max-w-2xl mx-auto flex items-center justify-between gap-6">
+              {/* Play description */}
+              <div className="flex-1">
+                <p className="text-[#FCF8EE] text-2xl font-bold uppercase tracking-[0.02em]">
+                  {getPlayerName(nopeWindow.playerId)} played{" "}
+                  <span className="text-[#B81C27]">
+                    {nopeWindow.cards.map(c => c.type.replace(/_/g, " ")).join(" + ")}
+                  </span>
+                  {nopeWindow.targetPlayerName && (
+                    <span className="text-amber-400"> → {nopeWindow.targetPlayerName}</span>
+                  )}
+                </p>
+                <p className="text-white/40 text-sm uppercase tracking-widest mt-1">
+                  Nope window open...
+                </p>
+              </div>
+ 
+            </div>
+ 
+            {/* Countdown bar */}
+            <motion.div
+              className="absolute bottom-0 left-0 h-1 bg-[#B81C27]"
+              initial={{ width: "100%" }}
+              animate={{ width: "0%" }}
+              transition={{ duration: 5, ease: "linear" }}
+              key={`nope-timer-${nopeWindow.startedAt}`}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* --- OPPONENTS AREA --- */}
       <div className="h-1/4 w-full flex justify-center items-start pt-8 gap-12">
@@ -146,6 +240,33 @@ export default function InGameScreen() {
           <div className="flex flex-col items-center gap-3">
             <DiscardDeck lastCard={lastPlayedCard} className="w-28 h-40" />
             <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Discard</span>
+          </div>
+
+          {/* Nope button — appears to the right of the discard pile during the nope window */}
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-28 h-40 flex items-center justify-center">
+              <AnimatePresence>
+                {nopeWindow && hasNopeCard && (
+                  <motion.button
+                    key="nope-btn"
+                    initial={{ scale: 0.7, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.7, opacity: 0 }}
+                    whileHover={{ scale: 1.06, y: -3 }}
+                    whileTap={{ scale: 0.95, y: 4 }}
+                    onClick={() => playNope(roomId)}
+                    className="w-24 h-24 rounded-full text-[#FCF8EE] text-xl font-bold uppercase tracking-[0.06em] select-none"
+                    style={{
+                      background: "radial-gradient(circle at 40% 35%, #e8333e, #9b1520 60%, #6b0d16)",
+                      boxShadow: "0 6px 0 #4a0810, 0 10px 28px rgba(184,28,39,0.55), inset 0 1px 0 rgba(255,255,255,0.18)",
+                    }}
+                  >
+                    NOPE!
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
+            <span className="text-xs font-bold text-white/0 uppercase tracking-widest">Nope</span>
           </div>
 
         </div>
@@ -315,7 +436,7 @@ export default function InGameScreen() {
                   id="requestedCardType" 
                   className="block w-full mt-2 p-4 bg-gray-100 focus:ring-2 focus:ring-[#C81C27] focus:outline-none border-none rounded-xl text-xl font-normal uppercase transition-all"
                 >
-                  {Object.values(CardType).map(type => (
+                  {Object.values(CardType).filter(type => type !== CardType.Exploding_Kauffman).map(type => (
                     <option key={type} value={type}>{type.replace(/_/g, " ")}</option>
                   ))}
                 </select>
@@ -338,6 +459,34 @@ export default function InGameScreen() {
                   className="w-full bg-white border-2 border-gray-200 hover:border-[#B81C27] text-[#0F0F0F] py-4 px-4 rounded-[4px] text-2xl font-normal uppercase tracking-[0.02em] transition-colors"
                 >
                   {opp.username}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Five Card Combo Type Picker Modal */}
+      {fiveCardComboTypes && fiveCardComboTypes.length > 0 && (
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#FCF8EE] text-[#0F0F0F] p-10 rounded-2xl max-w-md w-full shadow-2xl">
+            <h2 className="text-5xl font-bold uppercase tracking-[0.02em] mb-2 text-[#0F0F0F] text-center">
+              Five Card Combo
+            </h2>
+            <p className="mb-8 text-gray-500 text-xl text-center">
+              Pick a card type to take from the discard pile.
+            </p>
+ 
+            <div className="flex flex-col gap-3 max-h-80 overflow-y-auto">
+              {fiveCardComboTypes.filter(type => type !== CardType.Exploding_Kauffman).map(type => (
+                <motion.button
+                  key={type}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => submitFiveCardChoice(roomId, type)}
+                  className="w-full bg-white border-2 border-gray-200 hover:border-[#B81C27] text-[#0F0F0F] py-4 px-4 rounded-[4px] text-2xl font-normal uppercase tracking-[0.02em] transition-colors"
+                >
+                  {type.replace(/_/g, " ")}
                 </motion.button>
               ))}
             </div>
