@@ -342,8 +342,8 @@ myHand,
 
         {/* Hand Render (card fanning effect)*/}
         <div className={`flex justify-center h-64 px-8 w-full transition-all duration-300}`}>
-          <div className="overflow-x-auto overflow-y-visible no-scrollbar w-full flex justify-center">
-            <div className="flex flex-nowrap min-w-max px-20 pt-20 pb-10">
+          <div className="overflow-x-auto overflow-y-hidden w-full flex">
+            <div className="flex flex-nowrap min-w-max px-20 pt-20 pb-10 mx-auto">
           {myHand.length > 0 ? (
             myHand.map((card, index) => {
               const isSelected = selectedCardIds.includes(card.id);
@@ -362,7 +362,7 @@ myHand,
                     card={card}
                     onClick={() => handleCardClick(card.id)} 
                     // Add a ring and translate upward if the card is currently selected
-                    className={`w-24 h-36 cursor-pointer transition-all ${
+                    className={`w-32 h-44 cursor-pointer transition-all ${
                       isSelected ? '-translate-y-6 ring-4 ring-amber-500 rounded-lg' : ''
                     }`}
                   />

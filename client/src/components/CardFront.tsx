@@ -1,41 +1,91 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-// Import all card images
-import attackBase from '../assets/attackBase.png';
-import bathroomDrainBugBase from '../assets/bathroomDrainBugBase.png';
-import defuseBase from '../assets/defuseBase.png';
-import explodingCardsmock from '../assets/explodingCardsmock.png';
-import explodingKauffmanBase from '../assets/explodingKauffmanBase.png';
-import megaBugBase from '../assets/megaBugBase.png';
-import nopeBase from '../assets/nopeBase.png';
-import seeTheFutureBase from '../assets/seeTheFutureBase.png';
-import shuffleBase from '../assets/shuffleBase.png';
-import skipBase from '../assets/skipBase.png';
-import syntaxBugBase from '../assets/syntaxBugBase.png';
-import legacyBugBase from '../assets/legacyBugBase.png';
-import heisenbugBase from '../assets/heisenbugBase.png';
-import favorBase from '../assets/favorBase.png';
+// Bug card art
+import bathroomDrainBug from '../assets/bathroomDrainBug.png';
+import heisenbug from '../assets/heisenbug.png';
+import legacyBug from '../assets/legacyBug.png';
+import megaBug from '../assets/megaBug.png';
+import syntaxBug from '../assets/syntaxBug.png';
 
-// Map card types to their images
-const cardImageMap: Record<string, string> = {
-  'Attack': attackBase,
-  'Bathroom_Drain_Bug': bathroomDrainBugBase,
-  'Defuse': defuseBase,
-  'Exploding_Cards': explodingCardsmock,
-  'Exploding_Kauffman': explodingKauffmanBase,
-  'Mega_Bug': megaBugBase,
-  'Nope': nopeBase,
-  'See_the_Future': seeTheFutureBase,
-  'Shuffle': shuffleBase,
-  'Skip': skipBase,
-  'Syntax_Bug': syntaxBugBase,
-  'Favor': favorBase,
-  'Legacy_Bug': legacyBugBase,
-  'Heisenbug': heisenbugBase,
+// Exploding Kauffman
+import explodingKauffmanBase from '../assets/explodingKauffmanBase.png';
+
+// Attack (AT) variants
+import austenAT from '../assets/austenAT.png';
+import garrettAT from '../assets/garrettAT.png';
+import gunnarAT from '../assets/gunnarAT.png';
+import gusAT from '../assets/gusAT.png';
+import tanishaAT from '../assets/tanishaAT.png';
+
+// Defuse (DE) variants
+import aaronDE from '../assets/aaronDE.png';
+import chickenDE from '../assets/chickenDE.png';
+import drewDE from '../assets/drewDE.png';
+import jacDE from '../assets/jacDE.png';
+import jacksonDE from '../assets/jacksonDE.png';
+import leahDE from '../assets/leahDE.png';
+import riyaDE from '../assets/riyaDE.png';
+import valDE from '../assets/valDE.png';
+
+// Favor (FA) variants
+import calebFA from '../assets/calebFA.png';
+import cstoreFA from '../assets/cstoreFA.png';
+import isoFA from '../assets/isoFA.png';
+import nickFA from '../assets/nickFA.png';
+
+// Nope (NO) variants
+import bobNO from '../assets/bobNO.png';
+import emmaNO from '../assets/emmaNO.png';
+import microsoftNO from '../assets/microsoftNO.png';
+import shreyNO from '../assets/shreyNO.png';
+import virajNO from '../assets/virajNO.png';
+
+// See the Future (STF) variants
+import adamSTF from '../assets/adamSTF.png';
+import backSTF from '../assets/backSTF.png';
+import jacksonSTF from '../assets/jacksonSTF.png';
+import kauffmanSTF from '../assets/kauffmanSTF.png';
+
+// Shuffle (SH) variants
+import bubblesSH from '../assets/bubblesSH.png';
+import charlieSH from '../assets/charlieSH.png';
+import lukeSH from '../assets/lukeSH.png';
+import newsSH from '../assets/newsSH.png';
+
+// Skip (SK) variants
+import classSK from '../assets/classSK.png';
+import gannettSK from '../assets/gannettSK.png';
+import gavinSK from '../assets/gavinSK.png';
+import wilSK from '../assets/wilSK.png';
+
+// card types: pick variant by card.id
+const cardVariantMap: Record<string, string[]> = {
+  'Attack':        [austenAT, garrettAT, gunnarAT, gusAT, tanishaAT],
+  'Defuse':        [aaronDE, chickenDE, drewDE, jacDE, jacksonDE, leahDE, riyaDE, valDE],
+  'Favor':         [calebFA, cstoreFA, isoFA, nickFA],
+  'Nope':          [bobNO, emmaNO, microsoftNO, shreyNO, virajNO],
+  'See_the_Future':[adamSTF, backSTF, jacksonSTF, kauffmanSTF],
+  'Shuffle':       [bubblesSH, charlieSH, lukeSH, newsSH],
+  'Skip':          [classSK, gannettSK, gavinSK, wilSK],
 };
 
-//Card Front proops, all importnat stuff, save for the ? which are all optional extras
+// Single-image card types
+const cardImageMap: Record<string, string> = {
+  'Bathroom_Drain_Bug': bathroomDrainBug,
+  'Heisenbug':          heisenbug,
+  'Legacy_Bug':         legacyBug,
+  'Mega_Bug':           megaBug,
+  'Syntax_Bug':         syntaxBug,
+  'Exploding_Kauffman': explodingKauffmanBase,
+};
+
+function getCardImage(type: string, id: number): string | undefined {
+  const variants = cardVariantMap[type];
+  if (variants) return variants[id % variants.length];
+  return cardImageMap[type];
+}
+
 interface CardFrontProps {
   card: {
     id: number;
@@ -47,33 +97,30 @@ interface CardFrontProps {
   animate?: boolean;
 }
 
-//Component definition
-export default function CardFront({ 
-  card, 
-  className = "", 
-  onClick, 
+export default function CardFront({
+  card,
+  className = "",
+  onClick,
   isPlayable = true,
-  animate = true 
+  animate = true
 }: CardFrontProps) {
-  
-  const cardImage = cardImageMap[card.type];
 
-  //Card content extraction
+  const cardImage = getCardImage(card.type, card.id);
+
   const CardContent = () => (
     <div className="relative w-full h-full">
       {cardImage ? (
-        <img 
-          src={cardImage} 
+        <img
+          src={cardImage}
           alt={card.type}
           className="w-full h-full object-contain rounded-lg"
         />
       ) : (
-        //If a card doesnt have an image
         <div className="w-full h-full bg-gray-700 rounded-lg flex items-center justify-center text-white p-2 text-center text-xs">
           {card.type}
         </div>
       )}
-      
+
       {!isPlayable && (
         <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
           <span className="text-white text-xs font-bold">Not playable</span>
@@ -82,7 +129,6 @@ export default function CardFront({
     </div>
   );
 
-  // properly animates the cards now picture or no picutre
   if (animate) {
     return (
       <motion.div
@@ -96,7 +142,6 @@ export default function CardFront({
     );
   }
 
-  //If there is no animation reutn the contnet
   return (
     <div className={`relative w-24 h-32 ${className}`} onClick={onClick}>
       <CardContent />
