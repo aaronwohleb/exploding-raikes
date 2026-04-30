@@ -178,8 +178,7 @@ export function setupGameSockets(io: Server) {
         const result = player.drawCard(game);
 
         if (result.exploded) {
-             io.to(`lobby:${roomId}`).emit('action_resolved', { message: `${player.name} EXPLODED!` });
-             socket.emit('update_hand', { fullHand: player.hand }); 
+             socket.emit('update_hand', { fullHand: player.hand });
              io.to(`lobby:${roomId}`).emit('game_state_update', {
                  activeUserId: game.activePlayer.userId,
                  topCard: result.drawnCard,
