@@ -42,11 +42,48 @@ myHand,
     requestInitialState
   } = useGame();
 
+  const getCardDescription = (type: string, selectedCount: number = 1, isAllSameType: boolean = true, uniqueCount: number = 1) => {
+
+    if (isAllSameType) {
+      if (selectedCount === 2) {
+        return "TWO CARD COMBO: Play 2 of the same card to steal a random card from an opponent.";
+      }else if (selectedCount === 3) {
+        return "THREE CARD COMBO: Play 3 of the same card to choose a card from an opponent.";
+      }else{
+
+      }
+    
+  }
+
+  if (selectedCount === 5 && uniqueCount === 5) {
+    return "FIVE CARD COMBO: Play 5 different cards to take any card from the discard pile.";
+  }
+  const descriptions: Record<string, string> = {
+    Attack: "End your turn without drawing. Force the next player to take two turns.",
+    Defuse: "The only card that can save you from an Exploding Kauffman.",
+    Skip: "Immediately end your turn without drawing a card.",
+    Favor: "Force another player to give you one card of their choice.",
+    See_the_Future: "Privately view the top 3 cards of the deck.",
+    Shuffle: "Shuffle the Draw Pile.",
+    Nope: "Stop any action except for an Exploding Kauffman",
+    Two_Card_Combo: "Play 2 of the same card type to steal a random card from an opponent's hand.",
+    Three_Card_Combo: "Play 3 of the same card type to choose a card of from an opponent's hand if they have one",
+    Five_Card_Combo: "Play 5 different card types to take any card from the discard pile",
+    Legacy_Bug: "A bug that just won't move on. Useless on it's own, but powerful when used in combos.",
+    Bathroom_Drain_Bug: "A nasty disgusting bug that crawls out of your drain. Useless on it's own, but powerful when used in combos.",
+    Mega_Bug: "The Mega Bug like to live underground and host parties. Useless on it's own, but powerful when used in combos.",
+    Syntax_Bug: "a dreded bug whose presnce is revealed by the dreaded red squiggly line. Useless on it's own, but powerful when used in combos.",
+    Heisenbug: "A sneaky bug that changes its behavior when you try to observe it. Useless on it's own, but powerful when used in combos.",
+  };
+  return descriptions[type] || "A mysterious card with unknown powers.";
+};
+
   
   const { currentLobby } = useLobby();
   const { currentFrontendUser } = useAuth();
   const { roomId: paramRoomId } = useParams();
   const [defuseIndex, setDefuseIndex] = useState<number>(0);
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const navigate = useNavigate();
   
   const roomId = paramRoomId || currentLobby?.code || "ROOM_ID";
@@ -59,6 +96,7 @@ myHand,
 
   // State to track which cards the user has selected to play (for combos)
   const [selectedCardIds, setSelectedCardIds] = useState<number[]>([]);
+  const selectedBaseCard = myHand.find(c => c.id === selectedCardIds[0]);
   
   // Filter out the current user to display opponents
   const opponents = currentLobby?.players.filter(
@@ -105,6 +143,18 @@ myHand,
         fontFamily: '"bebas-neue-pro-semiexpanded", sans-serif',
       }}
     >
+
+    {/* --- INFO BUTTON --- */}
+      {selectedCardIds.length >= 1 && (
+        <motion.button 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          onClick={() => setShowInfoModal(true)}
+          className="absolute top-6 right-6 z-50 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white w-12 h-12 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-xl"
+        >
+          <span className="text-2xl font-bold italic">i</span>
+        </motion.button>
+      )}
       {/* --- action messages + play errors --- */} 
       {/* Will consolidate with emmas later */}
       <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-3 pointer-events-none">
@@ -273,7 +323,7 @@ myHand,
       </div>
 
       {/* --- PLAYER HAND AREA --- */}
-      <div className={`h-1/3 w-full flex flex-col items-center justify-end pb-10 transition-colors duration-500 ${isMyTurn ? 'bg-gradient-to-t from-amber-500/20 to-transparent' : 'bg-gradient-to-t from-black/60 to-transparent'}`}>
+      <div className={`relative z-20 h-1/3 w-full flex flex-col items-center justify-end pb-10 transition-colors duration-500 ${isMyTurn ? 'bg-gradient-to-t from-amber-500/20 to-transparent' : 'bg-gradient-to-t from-black/60 to-transparent'}`}>
         
         <div className="mb-4 flex items-center gap-4">
           <h2 className={`text-xl font-bold italic tracking-tighter ${isMyTurn ? 'text-amber-400 animate-pulse' : 'text-gray-400'}`}>
@@ -294,7 +344,9 @@ myHand,
         </div>
 
         {/* Hand Render (card fanning effect)*/}
-        <div className={`flex justify-center items-end h-64 px-8 w-full transition-all duration-300}`}>
+        <div className={`flex justify-center h-64 px-8 w-full transition-all duration-300}`}>
+          <div className="overflow-x-auto overflow-y-visible no-scrollbar w-full flex justify-center">
+            <div className="flex flex-nowrap min-w-max px-20 pt-20 pb-10">
           {myHand.length > 0 ? (
             myHand.map((card, index) => {
               const isSelected = selectedCardIds.includes(card.id);
@@ -323,6 +375,9 @@ myHand,
           ) : (
             <div className="text-white/30 italic">Drawing cards...</div>
           )}
+          
+            </div> 
+          </div>
         </div>
       </div>
 
@@ -522,6 +577,60 @@ myHand,
         </div>
       )}
 
+      {/* --- CARD INFO POPUP --- */}
+      {showInfoModal && selectedBaseCard && (
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[60]">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-[#FCF8EE] p-8 rounded-3xl max-w-sm w-full shadow-2xl flex flex-col items-center text-center border-4 border-[#B81C27]"
+          >
+            <div className="mb-6">
+              <CardFront card={selectedBaseCard} animate={false} className="w-40 h-56 mx-auto shadow-2xl" />
+            </div>
+
+            {(() => {
+              const selectedCards = myHand.filter(c => selectedCardIds.includes(c.id));
+              const count = selectedCards.length;
+              const uniqueTypes = new Set(selectedCards.map(c => c.type)).size;
+              const allSame = uniqueTypes === 1;
+
+              const isFiveCardCombo = count === 5 && uniqueTypes === 5;
+              const isMultiCombo = allSame && (count === 2 || count === 3);
+              const isValidCombo = isFiveCardCombo || isMultiCombo;
+
+              const displayTitle = isValidCombo 
+                ? `${count} Card Combo` 
+                : selectedBaseCard.type.replace(/_/g, " ");
+
+              const displayDescription = getCardDescription(
+                selectedBaseCard.type, 
+                count, 
+                allSame, 
+                uniqueTypes
+              );
+  
+
+              
+              return (
+              <>
+                <h3 className="text-4xl font-bold uppercase text-[#0F0F0F] mb-2">
+                  {displayTitle}
+                </h3>
+                <p className="text-gray-600 text-lg leading-relaxed mb-8 font-sans">
+                  {displayDescription}
+                </p>
+              </>
+              );
+      })()}
+
+            <button
+              onClick={() => setShowInfoModal(false)}
+              className="w-full bg-[#B81C27] text-white py-4 rounded-xl font-bold uppercase tracking-widest hover:bg-red-700 transition-colors shadow-lg"
+            >
+              Back to Game
+            </button>
+          </motion.div>
       {/* Player Loss Modal */}
       {explodedPlayerId === currentFrontendUser?._id && !gameOver && (
         <div className="absolute inset-0 bg-red-900/90 backdrop-blur-sm flex items-center justify-center z-50">
