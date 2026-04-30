@@ -13,6 +13,119 @@ import { Game } from '../game-runner/Game';
  * @param io - The socket.io Server instance created in server.ts.
  */
 export function setupGameSockets(io: Server) {
+
+  /**
+   * Finds a specific player's socket in a room by userId.
+   * Returns the first matching RemoteSocket, or undefined.
+   */
+  async function findPlayerSocket(roomId: string, userId: string) {
+    const sockets = await io.in(`lobby:${roomId}`).fetchSockets();
+    return sockets.find(s => s.data.userId === userId);
+  }
+
+  /**
+   * Broadcasts the current game state to everyone in the room.
+   */
+  function broadcastGameState(roomId: string, game: Game) {
+    io.to(`lobby:${roomId}`).emit('game_state_update', {
+      activeUserId: game.activePlayer.userId,
+      topCard: game.discardPile.pile[game.discardPile.pile.length - 1],
+      deckCount: game.drawDeck.deck.length
+    });
+  }
+
+  /**
+   * Helper function to securely update two different clients' hands at the same time.
+   */
+  async function updateBothHands(roomId: string, sourceUserId: string, sourceHand: Card[], targetUserId: string, targetHand: Card[], stolenCard: Card | null) {
+    const sourceSocket = await findPlayerSocket(roomId, sourceUserId);
+    if (sourceSocket) {
+      sourceSocket.emit('update_hand', { fullHand: sourceHand, stolenCard });
+    }
+ 
+    const targetSocket = await findPlayerSocket(roomId, targetUserId);
+    if (targetSocket) {
+      targetSocket.emit('update_hand', { fullHand: targetHand });
+    }
+  }
+
+  /**
+   * Starts or restarts the 5-second Nope window timer.
+   * When the timer fires, it calls game.resolvePendingAction() to handle all game
+   * state changes, then emits the appropriate events based on the returned result.
+   *
+   * Defined outside the connection handler so it doesnt capture any individual
+   * socket via closure. It looks up the original player's socket by userId when
+   * it needs to emit directly to them.
+   */
+  function startNopeTimer(roomId: string, game: Game) {
+    if (game.nopeTimer) clearTimeout(game.nopeTimer);
+ 
+    game.nopeTimer = setTimeout(async () => {
+      // All game logic (nope stack check, effect execution, discarding, cleanup)
+      // is handled inside Game.resolvePendingAction()
+      const result = game.resolvePendingAction();
+      if (!result) return;
+ 
+      if (result.noped) {
+        io.to(`lobby:${roomId}`).emit('action_resolved', { message: "The action was NOPED!" });
+        return;
+      }
+ 
+      // --- FAVOR RESOLVED (target must now choose a card to give) ---
+      if (result.pendingFavor) {
+        const targetSocket = await findPlayerSocket(roomId, result.pendingFavor.targetUserId);
+        if (targetSocket) {
+          targetSocket.emit('request_favor_card', {
+            sourceUserId: result.pendingFavor.sourceUserId,
+            sourcePlayerName: result.pendingFavor.sourcePlayerName,
+          });
+        }
+        broadcastGameState(roomId, game);
+        return;
+      }
+ 
+      // --- 2/3-CARD COMBO  ---
+      if (result.comboResult) {
+        const { sourcePlayerId, targetUserId, stolenCard, requestedType } = result.comboResult;
+        const sourcePlayer = game.playerList.find(p => p.userId === sourcePlayerId);
+        const targetPlayer = game.playerList.find(p => p.userId === targetUserId);
+ 
+        if (sourcePlayer && targetPlayer) {
+          if (stolenCard) {
+            await updateBothHands(roomId, sourcePlayerId, sourcePlayer.hand, targetUserId, targetPlayer.hand, stolenCard);
+          } else {
+            // 3-card combo: target didn't have the requested type
+            const sourceSocket = await findPlayerSocket(roomId, sourcePlayerId);
+            if (sourceSocket) {
+              sourceSocket.emit('play_error', { message: `${targetPlayer.name} did not have a ${requestedType}.` });
+            }
+          }
+        }
+ 
+        broadcastGameState(roomId, game);
+        return;
+      }
+ 
+      // --- NON-TARGETED RESOLUTION (Attack, Skip, Shuffle, 5-card combo) ---
+      const playerSocket = await findPlayerSocket(roomId, result.sourcePlayerId);
+ 
+      if (result.futureCards && playerSocket) {
+        playerSocket.emit('see_the_future', { cards: result.futureCards });
+      }
+ 
+      if (result.cardRequest && playerSocket) {
+        // 5-card combo: send the player the available card types from the discard pile to choose from
+        playerSocket.emit('action_requires_target', { 
+          requestType: result.cardRequest,
+          availableDiscardTypes: result.availableDiscardTypes,
+        });
+      }
+ 
+      broadcastGameState(roomId, game);
+    }, 5000);
+  }
+
   io.on('connection', (socket: Socket) => {
 
 
@@ -32,11 +145,7 @@ export function setupGameSockets(io: Server) {
         socket.emit('update_hand', { fullHand: player.hand });
         
         // Send them the current board state
-        socket.emit('game_state_update', {
-          activeUserId: game.activePlayer.userId,
-          topCard: game.discardPile.topCard,
-          deckCount: game.drawDeck.deck.length
-        });
+        broadcastGameState(roomId, game);
         
         console.log(`Sent initial game state to ${player.name}`);
       }
@@ -44,10 +153,8 @@ export function setupGameSockets(io: Server) {
     
     /**
      * Draw Card. Fired when a player wants to draw a card, ending their turn.
-     * 
-     * Expects: { roomId: string }
-     * 
-     * Emits back to THIS player:      receive_card      — their updated hand
+     * * Expects: { roomId: string, userId: string }
+     * * Emits back to THIS player:      update_hand      — their updated hand
      * Broadcasts to ALL in the room:  player_draws_card — who drew (no card details)
      */
     socket.on('draw_card', (data: { roomId: string, userId: string }) => {
@@ -71,213 +178,207 @@ export function setupGameSockets(io: Server) {
         const result = player.drawCard(game);
 
         if (result.exploded) {
-             io.to(`lobby:${roomId}`).emit('action_resolved', { message: `${player.name} EXPLODED!` });
-             socket.emit('update_hand', { fullHand: player.hand }); 
+             socket.emit('update_hand', { fullHand: player.hand });
              io.to(`lobby:${roomId}`).emit('game_state_update', {
                  activeUserId: game.activePlayer.userId,
                  topCard: result.drawnCard,
                  deckCount: game.drawDeck.deck.length
              });
-             return;
+
+             // player that exploded; tells entire room who exploded
+             io.to(`lobby:${roomId}`).emit('player_exploded', { playerId: userId, playerName: player.name });
+
+             // tells entire room the game is over
+             if (game.playerList.length === 1) {
+                io.to(`lobby:${roomId}`).emit('game_over', { 
+                    winnerId: game.playerList[0].userId, 
+                    winnerName: game.playerList[0].name 
+                });
+            } else if (game.playerList.length === 0) {
+                io.to(`lobby:${roomId}`).emit('game_over', { 
+                    winnerId: null, 
+                    winnerName: 'Nobody' 
+                });
+            }
+
+            return;
         }
 
         if (result.defusePending) {
-            console.log(`${player.name} is attempting to defuse an exploding kitten! Waiting for slider input...`);
+             console.log(`${player.name} is attempting to defuse an exploding kauffman! Waiting for slider input...`);
              socket.emit('update_hand', { fullHand: player.hand }); // Updates UI to show Defuse is gone
              
              // Tell the frontend to pop up the slider
              socket.emit('defuse_requires_index', { maxIndex: game.drawDeck.deck.length });
-             
-             io.to(`lobby:${roomId}`).emit('action_resolved', { message: `${player.name} drew an Exploding Kitten and is DEFUSING IT!` });
+
+             io.to(`lobby:${roomId}`).emit('action_resolved', { message: `${player.name} drew an Exploding Kauffman and is DEFUSING IT!` });
              return;
         }
 
-        // Send this player's full updated hand to prevent desync, along with the just drawn card for animation purposes
         socket.emit('update_hand', { fullHand: player.hand, justDrawnCard: result.drawnCard });
 
-        // Broadcast to everyone in the room that this player drew (no card details)
         io.to(`lobby:${roomId}`).emit('player_draws_card', {
           playerId: userId,
           deckCount: game.drawDeck.deck.length
         });
 
-        io.to(`lobby:${roomId}`).emit('game_state_update', {
-            activeUserId: game.activePlayer.userId,
-            topCard: game.discardPile.topCard,
-            deckCount: game.drawDeck.deck.length
-          });
+        broadcastGameState(roomId, game);
 
         console.log(`draw_card: player ${userId} drew a card in room ${roomId}`);
-
       } catch (error: any) {
         // Catch the "Not your turn" error thrown by Player.ts
         socket.emit('play_error', { message: error.message });
       }
     });
 
-    socket.on('submit_defuse_location', (data: { roomId: string, userId: string, insertIndex: number }) => {
-        const { roomId, userId, insertIndex } = data;
-        const unifiedRoom = `lobby:${roomId}`;
-        
-        const game = GameManager.getInstance().getGame(roomId);
-        if (!game) return;
+    /**
+     * Play Card. Initiates the Nope timer window.
+     */
+    socket.on('play_card', (data: { roomId: string, userId: string, cardIds: number[] }) => {
+      const { roomId, userId, cardIds } = data;
+      const game = GameManager.getInstance().getGame(roomId);
+      if (!game) return;
 
-        const player = game.playerList.find(p => p.userId === userId);
-        if (!player) return;
+      const player = game.playerList.find(p => p.userId === userId);
+      if (!player) return;
 
-        try {
-            // Call our new Player method
-            player.resolveDefuse(game, insertIndex);
+      // Turn validation: only the active player may play cards
+      if (game.activePlayer !== player) {
+        socket.emit('play_error', { message: "It is not your turn!" });
+        return;
+      }
 
-            socket.emit('action_resolved', { message: `You successfully hid the Exploding Kitten.` });
-            io.to(unifiedRoom).emit('action_resolved', { message: `${player.name} put the Exploding Kitten back in the deck.` });
+      
+      const selectedCards = player.hand.filter(c => cardIds.includes(c.id));
+      if (selectedCards.length !== cardIds.length) {
+        socket.emit('play_error', { message: "One or more selected cards were not found in your hand." });
+        return;
+      }
+      
+      player.selectedCards = selectedCards;
+      if (!player.checkMove()) {
+          socket.emit('play_error', { message: "Invalid move!" });
+          return;
+      }
 
-            // The deck count went up, and the turn changed! Update everyone.
-            io.to(unifiedRoom).emit('game_state_update', {
-                activeUserId: game.activePlayer.userId,
-                topCard: game.discardPile.topCard,
-                deckCount: game.drawDeck.deck.length
-            });
+      const setupResult = game.beginCardPlay(player, player.selectedCards);
+      socket.emit('update_hand', { fullHand: player.hand });
 
-        } catch (error: any) {
-            socket.emit('play_error', { message: error.message });
-        }
+      if (setupResult.requiresTarget) {
+        // --- TARGETED PLAY: ask the player to select a target BEFORE announcing ---
+        // The play is held until submit_target is received.
+        socket.emit('action_requires_target', { requestType: setupResult.cardRequest });
+        console.log(`play_card: ${player.name} played a targeted card, waiting for target selection...`);
+      } else {
+        // --- NON-TARGETED PLAY: announce immediately and start the Nope timer ---
+        io.to(`lobby:${roomId}`).emit('player_plays_card', { playerId: userId, cards: player.selectedCards });
+        startNopeTimer(roomId, game);
+        console.log(`play_card: ${player.name} played cards, nope window opened.`);
+      }
+    });
+
+    /**
+     * Play Nope. Resets the 5-second timer.
+     */
+    socket.on('play_nope', (data: { roomId: string, userId: string, cardId: number }) => {
+      const { roomId, userId, cardId } = data;
+      const game = GameManager.getInstance().getGame(roomId);
+      if (!game || !game.pendingAction) return;
+
+      const player = game.playerList.find(p => p.userId === userId);
+      if (!player) return;
+
+      const nopeCard = player.hand.find(c => c.id === cardId && c.type === CardType.Nope);
+      if (!nopeCard) return;
+
+      // Use the card
+      game.playNope(player, nopeCard);
+      
+      socket.emit('update_hand', { fullHand: player.hand });
+      io.to(`lobby:${roomId}`).emit('player_plays_card', { playerId: userId, cards: [nopeCard] });
+ 
+      // Reset the 5-second Nope window
+      startNopeTimer(roomId, game);
     });
 
 
-    /**
-     * PLAY CARD. Fired when a player wants to play one or more cards from their hand.
-     * 
-     * Expects: { roomId: string, cardIds: number[] }
-     * 
-     * Broadcasts to ALL in the room: player_plays_card — what was played
-     * Emits back to THIS player:     see_the_future    — only if See the Future was played
-     */
-    socket.on('play_card', (data: { roomId: string, cardIds: number[], userId: string }) => {
-      const { roomId, cardIds, userId } = data;
+    socket.on('submit_defuse_location', (data: { roomId: string, userId: string, insertIndex: number }) => {
+      const { roomId, userId, insertIndex } = data;
       const game = GameManager.getInstance().getGame(roomId);
-
-      if (!game) {
-        console.error(`play_card: no active game found for room ${roomId}`);
-        return;
-      }
-
+      if (!game) return;
       const player = game.playerList.find(p => p.userId === userId);
-
-      if (!player) {
-        console.error(`play_card: player ${userId} not found in game ${roomId}`);
-        return;
-      }
+      if (!player) return;
 
       try {
-        const result = player.playSelectedCards(game, cardIds );
-
-            // Broadcast to all players that this player played cards
-
-          io.to(`lobby:${roomId}`).emit('player_plays_cards', {
-            playerId: userId,
-            playedCards: result.lastPlayedCard, 
-          });
-
-        socket.emit('update_hand', { fullHand: player.hand });
-
-        // --- INTERACTIVE ACTIONS (Favor, Combos) ---
-        if (result.cardRequest === CardRequestType.Favor || result.cardRequest === CardRequestType.Two_Card_Combo || result.cardRequest === CardRequestType.Three_Card_Combo) {
-          // Ask for a target
-          socket.emit('action_requires_target', { 
-            actionType: result.cardRequest
-          });
-          io.to(`lobby:${roomId}`).emit('game_state_update', {
-          activeUserId: game.activePlayer.userId,
-          topCard: result.lastPlayedCard,
-          deckCount: game.drawDeck.deck.length
-        });
-          return; 
-        }
-
-        // --- INSTANT ACTIONS (Skip, Shuffle, STF, etc.) ---
-        if (result.futureCards) {
-          socket.emit('see_the_future', { cards: result.futureCards });
-        }
-
-        io.to(`lobby:${roomId}`).emit('game_state_update', {
-          activeUserId: game.activePlayer.userId,
-          topCard: result.lastPlayedCard,
-          deckCount: game.drawDeck.deck.length
-        });
-
-      } catch (error) {
-        console.error("Server failed to process play_card:", error);
+        player.resolveDefuse(game, insertIndex);
+        broadcastGameState(roomId, game);
+      } catch (error: any) {
+        socket.emit('play_error', { message: error.message });
       }
     });
 
     // PLAYER A SELECTS THE TARGET (AND OPTIONALLY A CARD TYPE)
     socket.on('submit_target', (data: { 
       roomId: string, 
+      userId: string,
       targetUserId: string, 
-      actionType: CardRequestType,
-      requestedCardType?: CardType,// Only used for 3-Card Combos
-      userId: string
+      requestedCardType?: CardType, // Only used for 3-Card Combos
     }) => {
-      const { roomId, targetUserId, actionType, requestedCardType, userId } = data;
+      const { roomId, userId, targetUserId, requestedCardType } = data;
+      const game = GameManager.getInstance().getGame(roomId);
+      if (!game||!game.pendingAction) return;
+
+      if (game.pendingAction.playerId !== userId) {
+        socket.emit('play_error', { message: "This is not your pending action." });
+        return;
+      }
+      const targetPlayer = game.playerList.find(p => p.userId === targetUserId);
+      if (!targetPlayer) {
+        socket.emit('play_error', { message: "Target player not found." });
+        return;
+      }
+ 
+      // 3-card combos require a requested card type
+      if (game.pendingAction.actionType === CardRequestType.Three_Card_Combo && !requestedCardType) {
+        socket.emit('play_error', { message: "You must specify a card type for a 3-card combo." });
+        return;
+      }
+ 
+      // Store the target on the pending action
+      game.setTarget(targetUserId, requestedCardType);
+ 
+      // NOW announce the full play to the room — everyone can see who is being targeted
+      io.to(`lobby:${roomId}`).emit('player_plays_card', { 
+        playerId: userId, 
+        cards: game.pendingAction.cards, 
+        targetPlayerId: targetUserId,
+        targetPlayerName: targetPlayer.name,
+        actionType: game.pendingAction.actionType,
+        requestedCardType: requestedCardType,
+      });
+ 
+      // Start the 5-second Nope window
+      startNopeTimer(roomId, game);
+      console.log(`submit_target: ${userId} targets ${targetPlayer.name}, nope window opened.`);
+    });
+
+    /**
+     * Submit Five Card Choice. Player picks a card from the discard pile after a 5-card combo resolves.
+     */
+    socket.on('submit_five_card_choice', (data: { roomId: string, userId: string, cardType: CardType }) => {
+      const { roomId, userId, cardType } = data;
       const game = GameManager.getInstance().getGame(roomId);
       if (!game) return;
-
-      const sourcePlayer = game.playerList.find(p => p.userId === userId);
-      const targetPlayer = game.playerList.find(p => p.userId === targetUserId);
-      
-      if (!sourcePlayer || !targetPlayer) return;
-
-      // --- HANDLE FAVOR ---
-      if (actionType === CardRequestType.Favor) {
-        // We must ask the target to pick a card 
-        io.in(`lobby:${roomId}`).fetchSockets().then(sockets => {
-          const targetSocket = sockets.find(s => s.data.userId === targetPlayer.userId);
-          if (targetSocket) {
-            targetSocket.emit('request_favor_card', { 
-              sourceUserId: sourcePlayer.userId,
-              sourcePlayerName: sourcePlayer.name
-            });
-          }
-        });
-        return; 
-      }
-
-      // --- HANDLE TWO CARD COMBO ---
-      if (actionType === CardRequestType.Two_Card_Combo) {
-        try {
-          // Automatic random steal
-          const stolenCard = sourcePlayer.resolveTwoCardCombo(targetPlayer);
-          
-          updateBothHands(roomId, sourcePlayer, targetPlayer, stolenCard, io, socket);
-
-        } catch (e: any) {
-          console.error(e);
-        }
-        return;
-      }
-
-      // --- HANDLE THREE CARD COMBO ---
-      if (actionType === CardRequestType.Three_Card_Combo) {
-        try {
-          if (!requestedCardType) {
-            return;
-          }
-
-          // Automatic targeted steal!
-          const stolenCard = sourcePlayer.resolveThreeCardCombo(targetPlayer, requestedCardType);
-          
-          if (stolenCard) {
-            updateBothHands(roomId, sourcePlayer, targetPlayer, stolenCard, io, socket);
-          
-          } else {
-            // They didn't have the card!
-            socket.emit('play_error', { message: `${targetPlayer.name} did not have a ${requestedCardType}.` });
-          }
-        } catch (e: any) {
-          console.error(e);
-        }
-        return;
+ 
+      const player = game.playerList.find(p => p.userId === userId);
+      if (!player) return;
+ 
+      try {
+        const chosenCard = player.resolveFiveCardCombo(game, cardType);
+        socket.emit('update_hand', { fullHand: player.hand, stolenCard: chosenCard });
+        broadcastGameState(roomId, game);
+      } catch (error: any) {
+        socket.emit('play_error', { message: error.message });
       }
     });
 
@@ -301,11 +402,8 @@ export function setupGameSockets(io: Server) {
         socket.emit('update_hand', { fullHand: targetPlayer.hand });
 
         // Search the room to find the Source (Attacker) and update them
-        io.in(`lobby:${roomId}`).fetchSockets().then(sockets => {
-          const sourceSocket = sockets.find(s => s.data.userId === sourcePlayer.userId);
-          
+        findPlayerSocket(roomId, sourcePlayer.userId).then(sourceSocket => {
           if (sourceSocket) {
-             // Send the attacker their new hand and the stolen card data for animations
              sourceSocket.emit('update_hand', { fullHand: sourcePlayer.hand, stolenCard });
           }
         });
@@ -330,20 +428,4 @@ export function setupGameSockets(io: Server) {
       
   });
 
-  /**
-   * Helper function to securely update two different clients' hands at the same time
-   */
-  function updateBothHands(roomId: string, sourcePlayer: any, targetPlayer: any, stolenCard: Card, io: Server, sourceSocket: Socket) {
-    // Update Source Player (The one who played the card)
-    sourceSocket.emit('update_hand', { fullHand: sourcePlayer.hand, stolenCard });
-    
-    // Find the Target Player's socket and update them
-    io.in(`lobby:${roomId}`).fetchSockets().then(sockets => {
-      const targetSocket = sockets.find(s => s.data.userId === targetPlayer.userId);
-      console.log("Target Socket for card stealing:", targetSocket);
-      if (targetSocket) {
-        targetSocket.emit('update_hand', { fullHand: targetPlayer.hand });
-      }
-    });
-  }
 }
