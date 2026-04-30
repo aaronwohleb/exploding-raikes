@@ -1,11 +1,15 @@
+export interface UserStats {
+  gamesPlayed: number;
+  wins: number;
+  timesExploded: number;
+}
+
 export interface FrontendUser {
   _id: string;
   username: string;
   email: string;
-//   stats?: {
-//     wins: number;
-//     gamesPlayed: number;
-//   };
+  stats?: UserStats;
+
 }
 
 export interface GameState {

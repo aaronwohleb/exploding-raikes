@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { AuthResponse, LobbyState } from '../types/types';
+import { AuthResponse, FrontendUser, LobbyState } from '../types/types';
 
 // Axios instance configured to point at the local backend
 const apiClient = axios.create({
@@ -57,7 +57,32 @@ export const registerUser = async (username: string, email: string, password: st
 
   return response.data;  
 };
- // GAME SERVICES
+
+// USER / PROFILE SERVICES
+ 
+/**
+ * Updates the current user's username.
+ * Returns the updated user object.
+ */
+export const updateUsername = async (
+  userId: string,
+  username: string
+): Promise<FrontendUser> => {
+  const response = await apiClient.patch<FrontendUser>(`/users/${userId}`, {
+    username,
+  });
+  return response.data;
+};
+
+/**
+ * Permanently deletes the user's account.
+ * Backend route: DELETE /api/users/:userId
+ */
+export const deleteAccount = async (userId: string): Promise<void> => {
+  await apiClient.delete(`/users/${userId}`);
+};
+
+ // LOBBY SERVICES
 
 /**
  * Tells the backend to create a new lobby and returns the generated code.
