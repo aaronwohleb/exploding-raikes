@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from "framer-motion";
 import { useGame } from "../context/GameContext";
 import { useAuth } from "../context/AuthContext";
@@ -9,6 +10,7 @@ import CardFront from "./CardFront";
 import DrawDeck from "./DrawDeck"; 
 import DiscardDeck from "./DiscardDeck"; 
 import { CardType } from "../types/types";
+
 
 //Player main screen definition
 export default function InGameScreen() {
@@ -31,6 +33,11 @@ myHand,
     closeSeeTheFuture,
     submitTarget, 
     submitFavorCard,
+    dismissExplosion,
+    gameOver,
+    explodedPlayerId,
+    eliminatedPlayerIds,
+    explosionNotification,
     submitFiveCardChoice,
     requestInitialState
   } = useGame();
@@ -40,6 +47,7 @@ myHand,
   const { currentFrontendUser } = useAuth();
   const { roomId: paramRoomId } = useParams();
   const [defuseIndex, setDefuseIndex] = useState<number>(0);
+  const navigate = useNavigate();
   
   const roomId = paramRoomId || currentLobby?.code || "ROOM_ID";
 
@@ -184,7 +192,11 @@ myHand,
           return (
             <div 
               key={opp._id} 
-              className={`flex flex-col items-center gap-2 transition-all duration-300 ${isOpponentTurn ? 'scale-110 drop-shadow-2xl opacity-100' : 'opacity-50'}`}
+              className={`flex flex-col items-center gap-2 transition-all duration-300 ${
+                eliminatedPlayerIds.includes(opp._id) 
+                    ? 'opacity-30' 
+                    : isOpponentTurn ? 'scale-110 drop-shadow-2xl opacity-100' : 'opacity-50'
+            }`}
             >
               {/* Floating Thinking Badge */}
               <div className="h-4">
@@ -195,8 +207,18 @@ myHand,
                 {[...Array(5)].map((_, i) => (
                   <CardBack key={i} className="w-12 h-16" />
                 ))}
+                {eliminatedPlayerIds.includes(opp._id) && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-red-500 text-6xl font-black">✕</span>
+                  </div>
+                )}
               </div>
-              <span className={`text-lg font-medium px-3 py-1 rounded-full ${isOpponentTurn ? 'bg-amber-500 text-black' : 'bg-black/40 text-white'}`}>
+              <span className={`text-lg font-medium px-3 py-1 rounded-full ${
+                eliminatedPlayerIds.includes(opp._id)
+                    ? 'bg-red-900/60 text-red-300 line-through'
+                    : isOpponentTurn ? 'bg-amber-500 text-black' : 'bg-black/40 text-white'
+              }`}
+            >
                 {opp.username}
               </span>
             </div>
@@ -303,6 +325,13 @@ myHand,
           )}
         </div>
       </div>
+
+      {/* Explosion Notification */}
+      {explosionNotification && (
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 bg-[#B81C27] text-[#FCF8EE] px-8 py-4 rounded-2xl shadow-2xl text-2xl font-bold uppercase tracking-widest animate-bounce">
+              {explosionNotification}
+          </div>
+      )}
 
 
       {/* INTERACTIVE MODALS */}
@@ -489,6 +518,62 @@ myHand,
                 </motion.div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Player Loss Modal */}
+      {explodedPlayerId === currentFrontendUser?._id && !gameOver && (
+        <div className="absolute inset-0 bg-red-900/90 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#FCF8EE] text-[#0F0F0F] p-8 rounded-2xl max-w-md w-full shadow-2xl flex flex-col items-center">
+            <h2 className="text-5xl font-bold uppercase tracking-[0.02em] mb-2 text-[#B81C27] animate-pulse">
+              YOU EXPLODED 💥
+            </h2>
+            <p className="mb-8 text-gray-600 text-xl text-center">
+              You drew an Exploding Kauffman and have no Defuse. You're out!
+            </p>
+            <div className="flex flex-col gap-4 w-full">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate('/')}
+                className="bg-[#B81C27] hover:bg-[#C81C27] text-[#FCF8EE] px-8 py-4 rounded-[4px] font-normal text-2xl uppercase tracking-[0.02em] shadow-sm w-full transition-colors"
+              >
+                Return to Lobby
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => dismissExplosion()}
+                className="bg-white border-2 border-gray-200 hover:border-[#B81C27] text-[#0F0F0F] px-8 py-4 rounded-[4px] font-normal text-2xl uppercase tracking-[0.02em] w-full transition-colors"
+              >
+                Spectate
+              </motion.button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Game Over Modal */}
+      {gameOver && (
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#FCF8EE] text-[#0F0F0F] p-8 rounded-2xl max-w-md w-full shadow-2xl flex flex-col items-center">
+            <h2 className="text-5xl font-bold uppercase tracking-[0.02em] mb-2 text-[#B81C27]">
+              {gameOver.winnerId === currentFrontendUser?._id ? '🏆 YOU WIN!' : 'GAME OVER'}
+            </h2>
+            <p className="mb-8 text-gray-600 text-xl text-center">
+              {gameOver.winnerId === currentFrontendUser?._id 
+                ? 'You are the last student standing!' 
+                : `${gameOver.winnerName} wins!`}
+            </p>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate('/')}
+              className="bg-[#B81C27] hover:bg-[#C81C27] text-[#FCF8EE] px-8 py-4 rounded-[4px] font-normal text-2xl uppercase tracking-[0.02em] shadow-sm w-full transition-colors"
+            >
+              Return to Lobby
+            </motion.button>
           </div>
         </div>
       )}

@@ -29,6 +29,10 @@ interface GameContextType {
 
   requestInitialState: (roomId: string, userId: string) => void;
 
+  explodedPlayerId: string | null;
+  gameOver: { winnerId: string, winnerName: string } | null;
+  dismissExplosion: () => void;
+
   // EMITTERS 
   // Emits a draw_card event to the server.
   drawCard: (roomId: string) => void;
@@ -43,6 +47,8 @@ interface GameContextType {
 
   defuseRequest: { maxIndex: number } | null;
   submitDefuseLocation: (roomId: string, insertIndex: number) => void;
+  eliminatedPlayerIds: string[];
+  explosionNotification: string | null;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -70,6 +76,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const [actionRequiresTarget, setActionRequiresTarget] = useState<CardRequestType | null>(null);
   const [favorRequest, setFavorRequest] = useState<{ sourceUserId: string, sourcePlayerName: string } | null>(null);
+  
+  const [explodedPlayerId, setExplodedPlayerId] = useState<string | null>(null);
+  const [gameOver, setGameOver] = useState<{ winnerId: string, winnerName: string } | null>(null);
+  const dismissExplosion = () => setExplodedPlayerId(null);
+  const [eliminatedPlayerIds, setEliminatedPlayerIds] = useState<string[]>([]);
+  const [explosionNotification, setExplosionNotification] = useState<string | null>(null);
+
 
   const [nopeWindow, setNopeWindow] = useState<NopeWindowState | null>(null);
   const nopeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -82,6 +95,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const requestInitialState = (roomId: string, userId: string) => {
     if (!socket) return;
     socket.emit('request_initial_state', { roomId, userId });
+    // Reset game over state for new sessions
+    setGameOver(null);
+    setExplodedPlayerId(null);
+    setEliminatedPlayerIds([]);
+    setExplosionNotification(null);
     };
 
 
@@ -231,6 +249,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
     socket.on('action_resolved', handleActionResolved);
     socket.on('play_error', handlePlayError);
 
+    socket.on('player_exploded', ({ playerId, playerName }: { playerId: string, playerName: string }) => {
+      setExplodedPlayerId(playerId);
+      setEliminatedPlayerIds(prev => [...prev, playerId]);
+      setExplosionNotification(`💥 ${playerName} exploded!`);
+      setTimeout(() => setExplosionNotification(null), 3000);
+  });
+    socket.on('game_over', (data: { winnerId: string, winnerName: string }) => setGameOver(data));
+
     // Turn the listeners off
     return () => {
       socket.off('update_hand', handleUpdateHand);
@@ -242,6 +268,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       socket.off('action_requires_target', handleActionRequiresTarget);
       socket.off('request_favor_card', handleRequestFavorCard);
+
+      socket.off('player_exploded');
+      socket.off('game_over');
+
       socket.off('action_resolved', handleActionResolved);
       socket.off('play_error', handlePlayError);
 
@@ -345,6 +375,11 @@ myHand,
       submitFavorCard,
       submitFiveCardChoice,
       requestInitialState,
+      explodedPlayerId,
+      gameOver,
+      dismissExplosion,
+      eliminatedPlayerIds,
+      explosionNotification,
     }}>
       {children}
     </GameContext.Provider>
