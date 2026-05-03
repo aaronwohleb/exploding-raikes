@@ -39,7 +39,6 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         console.log("socket disconnected")
         setIsConnected(false);
     });
-      // TODO: Add global game listeners to catch global events (ie kicking a player)
 
       newSocket.connect();
 

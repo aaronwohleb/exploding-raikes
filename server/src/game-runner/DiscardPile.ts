@@ -44,7 +44,8 @@ export class DiscardPile {
     }
 
     /**
-     * allows you to add cards to the discard pile
+     * Allows you to add cards to the discard pile.
+     * 
      * @param cards 
      */
     public addCards(cards: Card[]) {
@@ -52,9 +53,11 @@ export class DiscardPile {
     }
 
     /**
-     * returns the top card of the discard pile, or null if the pile is empty so you can display the top card
+     * Returns the top card of the discard pile, or null if the pile is empty so you can display the top card.
+     * 
+     * @return the top card of the discard pile
      */
     public get topCard(): Card | null {
-    return this._pile.length > 0 ? this._pile[this._pile.length - 1] : null;
+        return this._pile.length > 0 ? this._pile[this._pile.length - 1] : null;
     }
 }

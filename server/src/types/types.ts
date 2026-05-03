@@ -75,7 +75,7 @@ export enum CardRequestType {
 export interface Card {
   id: number;
   name: string;
-   type: CardType;
+  type: CardType;
 }
 
 /**
@@ -94,8 +94,8 @@ export interface pendingAction {
  * immediately or ask the player to pick a target first.
  */
 export interface CardPlaySetupResult {
-    requiresTarget: boolean;
-    cardRequest?: CardRequestType;
+  requiresTarget: boolean;
+  cardRequest?: CardRequestType;
 }
  
 /**
@@ -106,9 +106,9 @@ export interface PendingActionResult {
     sourcePlayerId: string;
   
     futureCards?: Card[];
-    /** Present if the player needs to make a post-resolution choice (e.g. 5-card combo discard pick). */
+    //Present if the player needs to make a post-resolution choice (e.g. 5-card combo discard pick).
     cardRequest?: CardRequestType;
-    /** Present for 5-card combo — the unique card types currently available in the discard pile. */
+    // Present for 5-card combo — the unique card types currently available in the discard pile.
     availableDiscardTypes?: CardType[];
 
     pendingFavor?: {

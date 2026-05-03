@@ -4,8 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLobby } from '../context/LobbyContext';
 
-// we can change this accordingly and figure how to store i just wanted to see what this would look like
-
 export default function CreateLobbyPage() {
   const navigate = useNavigate();
   const { currentFrontendUser } = useAuth();

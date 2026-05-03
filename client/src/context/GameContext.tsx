@@ -129,7 +129,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
       console.log('drawn_card :', data.justDrawnCard);
       console.log('full hand:', data.fullHand);
       setMyHand(data.fullHand);
-      // TODO: trigger animation for justDrawnCard if not null
     };
 
     /**
@@ -139,7 +138,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const handlePlayerDrawsCard = (data: { playerId: string, deckCount: number }) => {
       console.log('player_draws_card:', data.playerId);
       setDeckCount(data.deckCount);
-      // TODO: animate who drew card?
     };
 
     const handleDefuseRequiresIndex = (data: { maxIndex: number }) => {
@@ -355,7 +353,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   return (
     <GameContext.Provider value={{ 
-myHand, 
+      myHand, 
       lastPlayedCard, 
       seeTheFutureCards,
       closeSeeTheFuture,

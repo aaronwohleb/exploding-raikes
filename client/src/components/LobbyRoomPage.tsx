@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate} from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLobby } from "../context/LobbyContext";
 import { useGameSocket } from "../context/SocketContext";
@@ -131,7 +131,7 @@ export default function LobbyRoomPage() {
 
           <AnimatePresence>
             {currentLobby.players.map((player: any) => {
-              // DIRECT RECORD LOOKUP! This is why we used the Record<string, boolean> dictionary!
+              // DIRECT RECORD LOOKUP
               const isPlayerReady = currentLobby.readyStatus[player._id]; 
               const isPlayerHost = currentLobby.hostId === player._id;
 

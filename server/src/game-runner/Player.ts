@@ -19,7 +19,8 @@ export class Player {
     
     /**
      * Constructs a new Player object with a given name and number - also intializes empty hand and selcted cards arrays.
-     * * @param name the player's name
+     * 
+     * @param name the player's name
      * @param playerNum the player's numbner in play order
      * @param userId the player's user ID
      */
@@ -35,12 +36,10 @@ export class Player {
 
     /**
      * This function draws a card from the DrawDeck and adds it to this player's hand. Handles Exploding Kauffman draws as well.
-     * * @param game the game state before the draw
+     * 
+     * @param game the game state before the draw
      */
     public drawCard(game: Game): {drawnCard: Card; exploded: boolean; defusePending?: boolean} {
-        //TODO: Determine if async or if using websockets
-        //NOTE: Cannot return Card if async
-        //TODO: Add undefined checking for shift
 
         if (game.activePlayer !== this) {
             throw new Error("It is not your turn");
@@ -108,7 +107,8 @@ export class Player {
 
     /**
      * Determines if the SelectedCards are legal to play. Particularly useful for multi-card plays, but will also stop plays like 1 Bathroom_Drain_Bug.
-     * * @returns true if legal, false if not
+     * 
+     * @returns true if legal, false if not
      */
     public checkMove(): boolean {
         switch (this.selectedCards.length) {
@@ -119,6 +119,7 @@ export class Player {
                     CardType.Legacy_Bug,
                     CardType.Syntax_Bug,
                     CardType.Heisenbug,
+                    // Nope is legal to play as a single card, but illegal under normal circumstances
                     CardType.Nope,
                     CardType.Defuse,
                     CardType.Exploding_Kauffman,
@@ -144,6 +145,12 @@ export class Player {
 
     /**
      * Executes the actual effect of a card play after the Nope window has expired.
+     * 
+     * @param game the game state
+     * @param cards the cards to execute the final effect of
+     * @returns futureCards: if see the future was played, contains the top three cards of the draw deck
+     * @returns cardRequest: if the play requires action from any player, this contains the action type
+     * @returns lastPlayedCard: the card to display to the discard pile
      */
     public executeFinalEffect(game: Game, cards: Card[]): {futureCards?: Card[]; cardRequest?: CardRequestType; lastPlayedCard?: Card} {
         
@@ -163,7 +170,6 @@ export class Player {
                 console.log(`${this.name} played an Attack ${game.activePlayer.name} now has ${game.numTurns} turns.`);
                 break;
  
-
             case CardType.Favor:
                 return { cardRequest: CardRequestType.Favor, lastPlayedCard: card };
 
@@ -261,18 +267,8 @@ export class Player {
     }
 
     /**
-     * Removes the played cards from the player's hand and adds them to the discard pile.
-     * @param cards cards to discard
-     * @param game the game state
-     */
-    private discardCards(cards: Card[], game: Game) {
-        const cardIds = cards.map(c => c.id);
-        this.hand = this.hand.filter(c => !cardIds.includes(c.id));
-        game.discardPile.pile.push(...cards);
-    }
-
-    /**
      * Helper function to remove a players card by id and return it, used for resolving favors and combos.
+     * 
      * @param cardId card Id to remove from hand
      * @returns removed card
      */
@@ -284,6 +280,7 @@ export class Player {
 
     /**
      * Ends the player's turn and progresses to the next player. 
+     * 
      * @param game 
      */
     private endTurn(game: Game) {
@@ -293,22 +290,6 @@ export class Player {
 
         game.numTurns = 1; // Reset turns for the next player
         console.log(`Turn ended. It is now ${game.activePlayer.name}'s turn.`);
-    }
-
-    /**
-     * Removes the player from the game and subsitutes them with a computer player, which receives their hand.
-     */
-    public leaveGame() {
-        // Leave the game
-    }
-
-    /**
-     * Adds a player back to the game and replaces the computer opponent, receiving its hand.
-     * 
-     * NOTE: This function should only be used for a player that has previously disconnected from the game.
-     */
-    public joinGame() {
-        //Join the game
     }
 
     /**

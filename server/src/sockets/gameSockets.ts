@@ -175,7 +175,6 @@ export function setupGameSockets(io: Server) {
           return;
         }
 
-        // MIGHT NEED TO CHECK IF THIS IS CORRECT
         const result = player.drawCard(game);
 
         if (result.exploded) {
@@ -425,7 +424,6 @@ export function setupGameSockets(io: Server) {
           const { roomId, userId } = socket.data;
           if (roomId && userId) {
             try {
-              // TODO: Create new processPlayerLeave for game state
               //await processPlayerLeave(roomId, userId, io);
             } catch (error) {
               console.error("Socket disconnect cleanup failed:", error);

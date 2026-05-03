@@ -47,9 +47,9 @@ myHand,
     if (isAllSameType) {
       if (selectedCount === 2) {
         return "TWO CARD COMBO: Play 2 of the same card to steal a random card from an opponent.";
-      }else if (selectedCount === 3) {
+      } else if (selectedCount === 3) {
         return "THREE CARD COMBO: Play 3 of the same card type to choose a card from an opponent's hand if they have one";
-      }else{
+      } else {
 
       }
     
@@ -105,9 +105,8 @@ myHand,
   // Check if this player has a Nope card in hand
   const hasNopeCard = myHand.some(c => c.type === CardType.Nope);
 
-  /**
-   * Look up a player's display name from the lobby player list.
-   */
+  
+  // Look up a player's display name from the lobby player list.
   const getPlayerName = (playerId: string): string => {
     const player = currentLobby?.players.find(p => p._id === playerId);
     return player?.username || "Unknown";
@@ -131,7 +130,6 @@ myHand,
   };
 
   return (
-    // <div className="relative w-full h-screen bg-emerald-800 text-white overflow-hidden flex flex-col">
     <div 
       className="relative w-full h-screen overflow-hidden flex flex-col selection:bg-red-100"
       style={{
@@ -153,7 +151,6 @@ myHand,
         </motion.button>
       )}
       {/* --- action messages + play errors --- */} 
-      {/* Will consolidate with emmas later */}
       <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-3 pointer-events-none">
         <AnimatePresence>
           {actionMessage && (

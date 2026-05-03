@@ -30,8 +30,8 @@ export const getMe = async (): Promise<FrontendUser> => {
 // AUTH SERVICES
 
 /**
- * Sends login credentials to the backend and returns 
- * the authenticated frontend user
+ * Sends login credentials to the backend and returns the authenticated frontend user.
+ * 
  * @param email 
  * @param password 
  * @returns authenticated frontend user object and JWT token
@@ -47,8 +47,8 @@ export const loginUser = async (email: string, password: string): Promise<AuthRe
 };
 
 /**
- * Sends registration details to the backend and 
- * returns the newly created frontend user
+ * Sends registration details to the backend and returns the newly created frontend user.
+ * 
  * @param username 
  * @param email 
  * @param password 

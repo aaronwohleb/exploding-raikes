@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Lobby } from '../types/Lobby';
-import BackendUser from '../types/BackendUser'; // Assuming you have this file
+import BackendUser from '../types/BackendUser';
 import { generateLobbyCode } from '../utils/lobbyCode';
 import { LobbyState } from '../types/types';
 import { Server } from 'socket.io';
@@ -33,7 +33,6 @@ function formatLobbyResponse(lobby: any): LobbyState | null{
     };
   });
 
-  
   return {
     _id: lobby._id.toString(),
     code: lobby.code,
@@ -47,6 +46,13 @@ function formatLobbyResponse(lobby: any): LobbyState | null{
 
 // --- CONTROLLER FUNCTIONS ---
 
+/**
+ * Creates a new game lobby, generates a unique access code, and sets the requesting user as the host.
+ * 
+ * @param req Express Request object containing userId and optional maxPlayers in the body.
+ * @param res Express Response object used to send back the created lobby data or error.
+ * @returns A promise that resolves to the API response containing the new lobby details.
+ */
 export const createLobby = async (req: Request, res: Response): Promise<any> => {
   try {
     const { userId, maxPlayers } = req.body;
@@ -75,6 +81,13 @@ export const createLobby = async (req: Request, res: Response): Promise<any> => 
   }
 };
 
+/**
+ * Adds a user to an existing lobby if the lobby is waiting for players and is not yet full.
+ * 
+ * @param req Express Request object containing the lobby code and userId in the body.
+ * @param res Express Response object used to send back the updated lobby data or error.
+ * @returns A promise that resolves to the API response and emits a 'player-joined' socket event.
+ */
 export const joinLobby = async (req: Request, res: Response): Promise<any> => {
   try {
     const { code, userId } = req.body;
@@ -111,6 +124,13 @@ export const joinLobby = async (req: Request, res: Response): Promise<any> => {
   }
 };
 
+/**
+ * Retrieves the current state and member list of a specific lobby based on its unique code.
+ * 
+ * @param req Express Request object containing the lobby code in the URL parameters.
+ * @param res Express Response object used to send back the lobby details or error.
+ * @returns A promise that resolves to the API response containing formatted lobby information.
+ */
 export const getLobbyDetails = async (req: Request, res: Response): Promise<any> => {
   try {
     const lobby = await Lobby.findOne({ code: req.params.code.toUpperCase() });
@@ -121,6 +141,13 @@ export const getLobbyDetails = async (req: Request, res: Response): Promise<any>
   }
 };
 
+/**
+ * Updates whether a specific player is ready to start the game and broadcasts the status to the lobby.
+ * 
+ * @param req Express Request object containing code and userId in parameters, and isReady in the body.
+ * @param res Express Response object used to send back the updated lobby status or error.
+ * @returns A promise that resolves to the API response and emits a 'player-ready' socket event.
+ */
 export const updateReadyStatus = async (req: Request, res: Response): Promise<any> => {
   try {
     const { code, userId } = req.params;
@@ -153,6 +180,7 @@ export const updateReadyStatus = async (req: Request, res: Response): Promise<an
 
 /**
  * Helper function to process a player leaving, used both for socket disconnects and explicit leave requests.
+ * 
  * @param code Lobby code
  * @param userId 
  * @param io 
@@ -192,6 +220,13 @@ export const processPlayerLeave = async (code: string, userId: string, io: Serve
   return formatLobbyResponse(populatedLobby);
 };
 
+/**
+ * Removes a player from a lobby, handles host reassignment if necessary, and notifies other members.
+ * 
+ * @param req Express Request object containing the lobby code and userId in the URL parameters.
+ * @param res Express Response object used to send back the departure result or error.
+ * @returns A promise that resolves to the API response indicating the player has left.
+ */
 export const leaveLobby = async (req: Request, res: Response): Promise<any> => {
   try {
     const { code, userId } = req.params;

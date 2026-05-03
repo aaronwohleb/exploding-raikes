@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CardBack from './CardBack';
 import { useGame } from '../context/GameContext';
 
-//props for the draw deck, room id tells ya what deck to pluck from, card count is for the timer on the deck, calssname is for styling like in discardDec
+//props for the draw deck: roomId - which deck, cardCount - deck timer, className - for styling purposes (see discard deck)
 interface DrawDeckProps {
   roomId: string;
   cardCount: number;
