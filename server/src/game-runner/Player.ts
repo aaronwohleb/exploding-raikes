@@ -14,16 +14,9 @@ export class Player {
     private _selectedCards: Card[];
     private _hasNope: boolean;
 
-    // Temporarily holds exploding kauffman so cardId is preserved while waiting for slider input on where to insert it back into the deck
+    // Holds drawn Exploding Kauffman while the player picks where to reinsert it via the defuse slider
     private _pendingDefuseKauffman: Card | null;
-    
-    /**
-     * Constructs a new Player object with a given name and number - also intializes empty hand and selcted cards arrays.
-     * 
-     * @param name the player's name
-     * @param playerNum the player's numbner in play order
-     * @param userId the player's user ID
-     */
+
     public constructor(name: string, playerNum: number, userId: string) {
         this._name = name;
         this._playerNum = playerNum;
@@ -47,8 +40,6 @@ export class Player {
 
         let drawnCard: Card = game.drawDeck.deck.shift()!;
         let exploded = false;
-
-        console.log(`${this.name} drew a ${drawnCard.type.toString()} card`);
 
         if (drawnCard.type == CardType.Exploding_Kauffman) {
             let defuseIndex = this.hand.findIndex(c => c.type === CardType.Defuse);
@@ -167,7 +158,6 @@ export class Player {
                 const currentTurns = game.numTurns;
                 this.endTurn(game);          // endTurn resets numTurns to 1, so we overwrite after
                 game.numTurns = currentTurns > 1 ? currentTurns + 2 : 2;
-                console.log(`${this.name} played an Attack ${game.activePlayer.name} now has ${game.numTurns} turns.`);
                 break;
  
             case CardType.Favor:
@@ -179,12 +169,10 @@ export class Player {
 
             case CardType.See_the_Future:
                 let returnCards: Card[] = game.drawDeck.seeFuture(3);
-                console.log(`${game.activePlayer.name} just saw the future (x3)`);
                 return {futureCards: returnCards, lastPlayedCard: card};
 
             case CardType.Shuffle:
                 game.drawDeck.shuffleDeck();
-                console.log("Shuffled draw deck");
                 break;
 
             case CardType.Skip:
@@ -192,7 +180,6 @@ export class Player {
                 if (game.numTurns <= 0) {
                     this.endTurn(game);
                 }
-                console.log(`${game.activePlayer.name} has skipped a turn`);
                 break;
         }
 
@@ -288,96 +275,22 @@ export class Player {
         let nextIndex = (currentIndex + 1) % game.playerList.length;
         game.activePlayer = game.playerList[nextIndex];
 
-        game.numTurns = 1; // Reset turns for the next player
-        console.log(`Turn ended. It is now ${game.activePlayer.name}'s turn.`);
+        game.numTurns = 1;
     }
 
-    /**
-     * Gets the Player's name.
-     * 
-     * @return the Player's name
-     */
-    public get name(): string {
-        return this._name;
-    }
+    public get name(): string { return this._name; }
+    public get playerNum(): number { return this._playerNum; }
+    public get userId(): string { return this._userId; }
 
-    /**
-     * Gets the Player's number.
-     * 
-     * @return the Player's number
-     */
-    public get playerNum(): number {
-        return this._playerNum;
-    }
+    public get hand(): Card[] { return this._hand; }
+    public set hand(value: Card[]) { this._hand = value; }
 
-    /**
-     * Gets the Player's user id.
-     * 
-     * @return the Player's user id
-     */
-    public get userId(): string {
-        return this._userId;
-    }
+    public get selectedCards(): Card[] { return this._selectedCards; }
+    public set selectedCards(value: Card[]) { this._selectedCards = value; }
 
-    /**
-     * Gets the Player's hand.
-     * 
-     * @return the Player's hand
-     */
-    public get hand(): Card[] {
-        return this._hand;
-    }
+    public get hasNope(): boolean { return this._hasNope; }
+    public set hasNope(value: boolean) { this._hasNope = value; }
 
-    public get pendingDefuseKauffman(): Card | null {
-        return this._pendingDefuseKauffman;
-    }
-
-    /**
-     * Sets the Player's hand.
-     * 
-     * @param value the Player's hand
-     */
-    public set hand(value: Card[]) {
-        this._hand = value;
-    }
-
-    /**
-     * Gets the Player's selectedCards.
-     * 
-     * @return the Player's selectedCards
-     */
-    public get selectedCards(): Card[] {
-        return this._selectedCards;
-    }
-
-    /**
-     * Sets the Player's selectedCards.
-     * 
-     * @param value the Player's selectedCards
-     */
-    public set selectedCards(value: Card[]) {
-        this._selectedCards = value;
-    }
-
-    /**
-     * Gets the Player's hasNope status.
-     * 
-     * @return the Player's hasNope status
-     */
-    public get hasNope(): boolean {
-        return this._hasNope;
-    }
-
-    /**
-     * Sets the Player's hasNope status.
-     * 
-     * @param value the Player's hasNope status
-     */
-    public set hasNope(value: boolean) {
-        this._hasNope = value;
-    }
-
-    public set pendingDefuseKauffman(value: Card | null) {
-        this._pendingDefuseKauffman = value;
-    }
+    public get pendingDefuseKauffman(): Card | null { return this._pendingDefuseKauffman; }
+    public set pendingDefuseKauffman(value: Card | null) { this._pendingDefuseKauffman = value; }
 }

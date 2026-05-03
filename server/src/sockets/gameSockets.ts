@@ -28,10 +28,15 @@ export function setupGameSockets(io: Server) {
    * Broadcasts the current game state to everyone in the room.
    */
   function broadcastGameState(roomId: string, game: Game) {
+    const playerHandCounts: Record<string, number> = {};
+    for (const player of game.playerList) {
+      playerHandCounts[player.userId] = player.hand.length;
+    }
     io.to(`lobby:${roomId}`).emit('game_state_update', {
       activeUserId: game.activePlayer.userId,
       topCard: game.discardPile.pile[game.discardPile.pile.length - 1],
-      deckCount: game.drawDeck.deck.length
+      deckCount: game.drawDeck.deck.length,
+      playerHandCounts,
     });
   }
 
@@ -130,25 +135,19 @@ export function setupGameSockets(io: Server) {
   io.on('connection', (socket: Socket) => {
 
 
-    // --- INITIAL UI LOAD HANDSHAKE ---
     socket.on('request_initial_state', (data: { roomId: string, userId: string }) => {
       const { roomId, userId } = data;
-      
+
       const game = GameManager.getInstance().getGame(roomId);
       if (!game) return;
 
       const player = game.playerList.find(p => p.userId === userId);
 
-      socket.data.userId = userId; // Store userId on socket for easy access in future events
-      
+      socket.data.userId = userId;
+
       if (player) {
-        // Send this specific player their hand
         socket.emit('update_hand', { fullHand: player.hand });
-        
-        // Send them the current board state
         broadcastGameState(roomId, game);
-        
-        console.log(`Sent initial game state to ${player.name}`);
       }
     });
     
@@ -185,7 +184,6 @@ export function setupGameSockets(io: Server) {
                  deckCount: game.drawDeck.deck.length
              });
 
-             // player that exploded; tells entire room who exploded
              io.to(`lobby:${roomId}`).emit('player_exploded', { playerId: userId, playerName: player.name });
 
              // Update the exploded player's stats
@@ -211,8 +209,7 @@ export function setupGameSockets(io: Server) {
         }
 
         if (result.defusePending) {
-             console.log(`${player.name} is attempting to defuse an exploding kauffman! Waiting for slider input...`);
-             socket.emit('update_hand', { fullHand: player.hand }); // Updates UI to show Defuse is gone
+             socket.emit('update_hand', { fullHand: player.hand });
              
              // Tell the frontend to pop up the slider
              socket.emit('defuse_requires_index', { maxIndex: game.drawDeck.deck.length });
@@ -230,9 +227,7 @@ export function setupGameSockets(io: Server) {
 
         broadcastGameState(roomId, game);
 
-        console.log(`draw_card: player ${userId} drew a card in room ${roomId}`);
       } catch (error: any) {
-        // Catch the "Not your turn" error thrown by Player.ts
         socket.emit('play_error', { message: error.message });
       }
     });
@@ -274,12 +269,10 @@ export function setupGameSockets(io: Server) {
         // --- TARGETED PLAY: ask the player to select a target BEFORE announcing ---
         // The play is held until submit_target is received.
         socket.emit('action_requires_target', { requestType: setupResult.cardRequest });
-        console.log(`play_card: ${player.name} played a targeted card, waiting for target selection...`);
       } else {
         // --- NON-TARGETED PLAY: announce immediately and start the Nope timer ---
         io.to(`lobby:${roomId}`).emit('player_plays_card', { playerId: userId, cards: player.selectedCards });
         startNopeTimer(roomId, game);
-        console.log(`play_card: ${player.name} played cards, nope window opened.`);
       }
     });
 
@@ -354,18 +347,16 @@ export function setupGameSockets(io: Server) {
       game.setTarget(targetUserId, requestedCardType);
  
       // NOW announce the full play to the room — everyone can see who is being targeted
-      io.to(`lobby:${roomId}`).emit('player_plays_card', { 
-        playerId: userId, 
-        cards: game.pendingAction.cards, 
+      io.to(`lobby:${roomId}`).emit('player_plays_card', {
+        playerId: userId,
+        cards: game.pendingAction.cards,
         targetPlayerId: targetUserId,
         targetPlayerName: targetPlayer.name,
         actionType: game.pendingAction.actionType,
         requestedCardType: requestedCardType,
       });
- 
-      // Start the 5-second Nope window
+
       startNopeTimer(roomId, game);
-      console.log(`submit_target: ${userId} targets ${targetPlayer.name}, nope window opened.`);
     });
 
     /**
@@ -419,18 +410,6 @@ export function setupGameSockets(io: Server) {
       }
     });
 
-    // Leaves room when disconnected
-        socket.on('disconnect', async () => {
-          const { roomId, userId } = socket.data;
-          if (roomId && userId) {
-            try {
-              //await processPlayerLeave(roomId, userId, io);
-            } catch (error) {
-              console.error("Socket disconnect cleanup failed:", error);
-            }
-          }
-        });
-      
   });
 
 }

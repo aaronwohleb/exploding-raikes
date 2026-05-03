@@ -24,16 +24,13 @@ export function LobbyProvider({ children }: { children: ReactNode }) {
 
 
     // --- SOCKET LISTENERS ---
-useEffect(() => {
+  useEffect(() => {
     if (!socket) return;
 
-    // Listen for new players joining
     const handlePlayerJoined = (data: any) => {
-      console.log("Socket heard a new player join!", data);
-      
       setCurrentLobby((prevLobby) => {
         if (!prevLobby) return prevLobby;
-        
+
         // Prevent duplicating the player if React fires twice
         if (prevLobby.players.some(p => p._id === data.userId)) return prevLobby;
 
@@ -46,56 +43,48 @@ useEffect(() => {
         return {
           ...prevLobby,
           players: [...prevLobby.players, newPlayer],
-          readyStatus: { ...prevLobby.readyStatus, [data.userId]: false } 
-        } as LobbyState; // TypeScript fix: forcefully cast as LobbyState
+          readyStatus: { ...prevLobby.readyStatus, [data.userId]: false }
+        } as LobbyState;
       });
     };
 
     // Listen for players changing their ready status
     const handlePlayerReady = (data: any) => {
-      console.log("Socket heard a player ready up!", data);
-
       setCurrentLobby((prevLobby) => {
         if (!prevLobby) return prevLobby;
         return {
           ...prevLobby,
           readyStatus: { ...prevLobby.readyStatus, [data.userId]: data.isReady }
-        } as LobbyState; 
+        } as LobbyState;
       });
     };
 
     // 3. Listen for players leaving
     const handlePlayerLeft = (data: any) => {
-      console.log("Socket heard a player leave!", data);
-
       setCurrentLobby((prevLobby) => {
         if (!prevLobby) return prevLobby;
-        
+
         const updatedReadyStatus = { ...prevLobby.readyStatus };
-        delete updatedReadyStatus[data.userId]; // Clean up the dictionary
+        delete updatedReadyStatus[data.userId];
 
         return {
           ...prevLobby,
           hostId: data.newHostId || prevLobby.hostId, // Reassign host if needed
           players: prevLobby.players.filter(p => p._id !== data.userId),
           readyStatus: updatedReadyStatus
-        } as LobbyState; // TypeScript fix
+        } as LobbyState;
       });
     };
 
     const handleStartGame = (data: { roomId: string }) => {
       navigate(`/game/${data.roomId}`);
-      console.log("Socket heard game started!");
-    }
-   
+    };
 
-    // Turn the listeners on using the exact strings emitted by the server
     socket.on('player-joined', handlePlayerJoined);
     socket.on('player-ready', handlePlayerReady);
     socket.on('player-left', handlePlayerLeft);
     socket.on('game_started', handleStartGame);
 
-    // Turn the listeners off when the component unmounts
     return () => {
       socket.off('player-joined', handlePlayerJoined);
       socket.off('player-ready', handlePlayerReady);
@@ -106,11 +95,8 @@ useEffect(() => {
 
   const createNewLobby = async (userId: string) => {
     const newLobby = await api.createLobby(userId);
-    console.log("New lobby created:", newLobby);
-    console.log("Joining room with code:", newLobby.code);
     setCurrentLobby(newLobby);
     joinRoom(newLobby.code);
-    
     return newLobby.code;
   };
 
@@ -175,7 +161,6 @@ useEffect(() => {
 
   const startGame = () => {
     if (!socket) return;
-    console.log("Emitting start game with room ID:", currentLobby?.code);
     socket.emit('start_game', { roomId: currentLobby?.code });
   };
 

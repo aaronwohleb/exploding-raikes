@@ -98,9 +98,7 @@ export const createLobby = async (userId: string, maxPlayers: number = 8): Promi
     userId,
     maxPlayers
   });
-  console.log("RAW CREATE DATA FROM BACKEND:", response.data);
-  // Pull the lobby code out of the response
-  return response.data; 
+  return response.data;
 };
 
 /**

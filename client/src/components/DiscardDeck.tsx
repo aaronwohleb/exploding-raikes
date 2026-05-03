@@ -1,14 +1,12 @@
-import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CardFront from './CardFront';
 import { Card } from '../types/types';
 
-//props for the discard pile, last card, which is the display for the discard pile, and classname for styling options
 interface DiscardPileProps {
   lastCard: Card | null;
   className?: string;
 }
-//Component definition
+
 export default function DiscardPile({ lastCard, className = "" }: DiscardPileProps) {
   return (
     <div className={`relative border-2 border-dashed border-white/20 rounded-lg flex items-center justify-center ${className}`}>

@@ -3,7 +3,6 @@ import { FrontendUser }  from "../types/types"
 import * as api from '../services/api';
 
 
-// Define Auth Context
 interface AuthContextType {
   currentFrontendUser: FrontendUser | null;
   login: (email: string, password: string) => Promise<void>;
@@ -24,41 +23,37 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FrontendUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // On mount, attempt to restore the session from a stored JWT
+  // Restore the session from a stored JWT on mount
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (!token) {
-      return;
-    }
+    if (!token) return;
     api.getMe()
       .then((frontendUser) => setUser(frontendUser))
-      .catch(() => localStorage.removeItem('token')) // expired or invalid
-      .finally()
+      .catch(() => localStorage.removeItem('token'));
   }, []);
 
   const login = async (email: string, password: string) => {
     const {frontendUser, token} = await api.loginUser(email, password);
-    localStorage.setItem('token', token); // Store JWT token for future authenticated requests
-    setUser(frontendUser); // Update context with the authenticated user
+    localStorage.setItem('token', token);
+    setUser(frontendUser);
   };
 
   const register = async (username: string, email: string, password: string) => {
     const {frontendUser, token} = await api.registerUser(username, email, password);
-    localStorage.setItem('token', token); // Store JWT token for future authenticated requests
-    setUser(frontendUser); // Update context with the registered user
+    localStorage.setItem('token', token);
+    setUser(frontendUser);
   };
 
   const logout = () => {
-    localStorage.removeItem('token'); // Clear JWT token from storage
+    localStorage.removeItem('token');
     setUser(null);
   }
 
   const updateUsername = async (newUsername: string) => {
     if (!user) throw new Error("Can't update username: no user is logged in.");
     const updated = await api.updateUsername(user._id, newUsername);
-    setUser(updated); // Sync context with server's authoritative response
+    setUser(updated);
   };
 
   const refreshUser = async () => {

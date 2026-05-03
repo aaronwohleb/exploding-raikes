@@ -6,24 +6,18 @@ import { Player } from '../game-runner/Player';
 
 export function setupLobbySockets(io: Server) {
   io.on('connection', (socket: Socket) => {
-    console.log('Player connected:', socket.id);
-
-    // Listen for 'join_room' (matches frontend)
     socket.on('join_room', (data) => {
       const { roomId, userId } = data;
       socket.join(`lobby:${roomId}`);
       socket.data.roomId = roomId;
-      console.log(`Socket ${socket.id} joined lobby room: ${roomId}`);
     });
 
-    // Listen for 'leave_room' (matches frontend)
     socket.on('leave_room', () => {
       // Leave all rooms except the default room (socket.id)
       const rooms = Array.from(socket.rooms);
       rooms.forEach(room => {
         if (room !== socket.id) {
           socket.leave(room);
-          console.log(`Socket ${socket.id} left room: ${room}`);
         }
       });
     });
@@ -40,10 +34,7 @@ export function setupLobbySockets(io: Server) {
       }
     });
 
-  // Listen for 'start_game' (matches frontend)
   socket.on('start_game', async (data) => {
-  // Destructure the data from the event
-  console.log("START GAME", data);
   const { roomId } = data;
 
   // Fetch the lobby and its players

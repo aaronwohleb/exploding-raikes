@@ -1,4 +1,3 @@
-// GameManager.ts
 import { Game } from './Game';
 import { Player } from './Player';
 

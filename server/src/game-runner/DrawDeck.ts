@@ -133,21 +133,6 @@ export class DrawDeck {
         }
     }
 
-    /**
-     * Gets the DrawDeck object's deck.
-     * 
-     * @return the DrawDeck object's deck
-     */
-    public get deck(): Card[] {
-        return this._deck;
-    }
-
-    /**
-     * Sets the DrawDeck object's deck.
-     * 
-     * @param value the edited DrawDeck object's deck
-     */
-    public set deck(value: Card[]) {
-        this._deck = value;
-    }
+    public get deck(): Card[] { return this._deck; }
+    public set deck(value: Card[]) { this._deck = value; }
 }

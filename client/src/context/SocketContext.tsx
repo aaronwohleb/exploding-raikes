@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 
@@ -29,16 +29,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
       setSocket(newSocket);
 
-      // listeners
-      newSocket.on('connect', () => {
-        console.log("socket connected with ID:", newSocket.id);
-        setIsConnected(true);
-      });
-
-      newSocket.on('disconnect', () => {
-        console.log("socket disconnected")
-        setIsConnected(false);
-    });
+      newSocket.on('connect', () => setIsConnected(true));
+      newSocket.on('disconnect', () => setIsConnected(false));
 
       newSocket.connect();
 

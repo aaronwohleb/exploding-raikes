@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -157,7 +157,6 @@ export default function JoinLobbyPage() {
               {lobbyCode.length} / 6
             </p>
 
-            {/* Error message — animates in on failure */}
             <AnimatePresence>
               {error && (
                 <motion.p

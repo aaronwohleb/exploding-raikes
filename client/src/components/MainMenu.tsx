@@ -25,10 +25,8 @@ export default function MainMenu() {
 
     try {
       if (authMode === "LOGIN") {
-        // This now triggers the service in api.ts
         await login(email, password);
       } else {
-        // This sends the username, email, and password
         await register(usernameInput, email, password);
       }
       setShowAuthModal(false);
@@ -41,8 +39,8 @@ export default function MainMenu() {
     <div className="relative w-full h-screen bg-[#FCF8EE] text-gray-800 font-sans overflow-hidden selection:bg-red-100">
       {/* --- TOP HEADER --- */}
       <header className="absolute top-0 left-0 w-full p-8 flex justify-between items-start z-10">
-        <div className="w-1/3"></div> {/* Spacer for balance */}
         {/* Title */}
+        <div className="w-1/3"></div>
         <motion.h1
           initial={{ y: -50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
