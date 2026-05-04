@@ -17,7 +17,6 @@ export interface GameState {
   players: FrontendUser[];
   activePlayerId: string;
   gameStatus: 'LOBBY' | 'PLAYING' | 'GAME_OVER';
-  // Add other game specific fields
 }
 
 export interface AuthResponse {
@@ -75,7 +74,7 @@ export enum CardRequestType {
 export interface Card {
   id: number;
   name: string;
-   type: CardType;
+  type: CardType;
 }
 
 /**

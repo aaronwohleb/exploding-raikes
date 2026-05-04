@@ -1,9 +1,8 @@
 import axios from 'axios';
 import { AuthResponse, FrontendUser, LobbyState } from '../types/types';
 
-// Axios instance configured to point at the local backend
 const apiClient = axios.create({
-  baseURL: 'http://localhost:3001/api', // Backend URL
+  baseURL: import.meta.env.VITE_API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -30,8 +29,8 @@ export const getMe = async (): Promise<FrontendUser> => {
 // AUTH SERVICES
 
 /**
- * Sends login credentials to the backend and returns 
- * the authenticated frontend user
+ * Sends login credentials to the backend and returns the authenticated frontend user.
+ * 
  * @param email 
  * @param password 
  * @returns authenticated frontend user object and JWT token
@@ -47,8 +46,8 @@ export const loginUser = async (email: string, password: string): Promise<AuthRe
 };
 
 /**
- * Sends registration details to the backend and 
- * returns the newly created frontend user
+ * Sends registration details to the backend and returns the newly created frontend user.
+ * 
  * @param username 
  * @param email 
  * @param password 
@@ -98,9 +97,7 @@ export const createLobby = async (userId: string, maxPlayers: number = 8): Promi
     userId,
     maxPlayers
   });
-  console.log("RAW CREATE DATA FROM BACKEND:", response.data);
-  // Pull the lobby code out of the response
-  return response.data; 
+  return response.data;
 };
 
 /**

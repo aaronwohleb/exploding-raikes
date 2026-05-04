@@ -3,19 +3,19 @@ import { useNavigate } from "react-router-dom";
 
 
 import explodingKauffmanBase from "../assets/explodingKauffmanBase.png";
-import defuseBase from "../assets/defuseBase.png";
-import attackBase from "../assets/attackBase.png";
-import skipBase from "../assets/skipBase.png";
-import favorBase from "../assets/favorBase.png";
-import shuffleBase from "../assets/shuffleBase.png";
-import nopeBase from "../assets/nopeBase.png";
-import seeTheFutureBase from "../assets/seeTheFutureBase.png";
-
-import heisenbugBase from "../assets/heisenbugBase.png";
-import legacyBugBase from "../assets/legacyBugBase.png";
-import megaBugBase from "../assets/megaBugBase.png";
-import syntaxBugBase from "../assets/syntaxBugBase.png";
-import bathroomDrainBugBase from "../assets/bathroomDrainBugBase.png";
+import explodingKauffmanBack from "../assets/explodingKauffmanBack.png";
+import jacksonDE from "../assets/jacksonDE.png";
+import gusAT from "../assets/gusAT.png";
+import gavinSK from "../assets/gavinSK.png";
+import calebFA from "../assets/calebFA.png";
+import charlieSH from "../assets/charlieSH.png";
+import bobNO from "../assets/bobNO.png";
+import adamSTF from "../assets/adamSTF.png";
+import heisenbug from "../assets/heisenbug.png";
+import legacyBug from "../assets/legacyBug.png";
+import megaBug from "../assets/megaBug.png";
+import syntaxBug from "../assets/syntaxBug.png";
+import bathroomDrainBug from "../assets/bathroomDrainBug.png";
 
 export default function HowToPlay() {
   const navigate = useNavigate();
@@ -25,8 +25,8 @@ export default function HowToPlay() {
     {
       title: "Welcome to Exploding Kauffman!",
       content: "A fast-paced card game of luck and strategy. Be the last developer standing!",
-      image: null,
-      description: "Game Logo / Welcome Screen",
+      image: explodingKauffmanBack,
+      imageAlt: "Exploding Kauffman card back",
     },
     {
       title: "The Basics",
@@ -37,54 +37,54 @@ export default function HowToPlay() {
     {
       title: "Defuse Cards",
       content: "Got an Exploding Kauffman? Play a Defuse card to stay in the game! Place the explosion back in the deck anywhere you want.",
-      image: defuseBase,
+      image: jacksonDE,
       imageAlt: "Defuse Card - Stops Exploding Kauffmans",
     },
     {
       title: "Attack Cards",
       content: "Force the next player to take TWO turns instead of one. Attacking will automatically end your turn and stack any extra turns on top of your attack.",
-      image: attackBase,
+      image: gusAT,
       imageAlt: "Attack Card - Force the next player to take 2 extra turns",
     },
     {
       title: "Skip Cards",
       content: "Skip one turn without drawing a card. If you were attacked, you still have to play extra turns.",
-      image: skipBase,
+      image: gavinSK,
       imageAlt: "Skip Card - Avoid drawing cards and pass your turn",
     },
     {
       title: "Favor Cards",
       content: "Force another player to give you a card of their choice. Choose wisely!",
-      image: favorBase,
+      image: calebFA,
       imageAlt: "Favor Card - Demand a card from another player",
     },
     {
       title: "Shuffle Cards",
       content: "Shuffle the draw deck to mix things up. Great for when you know what's coming!",
-      image: shuffleBase,
+      image: charlieSH,
       imageAlt: "Shuffle Card - Randomize the draw deck order",
     },
     {
       title: "Nope Cards",
       content: "Cancel any action card except for Exploding Kauffman or Defuse. Nope their Nope!",
-      image: nopeBase,
+      image: bobNO,
       imageAlt: "Nope Card - Cancel other players' actions",
     },
     {
       title: "See The Future Cards",
       content: "Privately peek at the top 3 cards of the draw deck. Plan your strategy!",
-      image: seeTheFutureBase,
+      image: adamSTF,
       imageAlt: "See The Future Card - Look ahead at upcoming cards",
     },
     {
       title: "Bug Cards and Combos",
       content: "Bugs are useless on their own, but playing them together can preform combos! Play any two matching cards (ie two Heisenbugs or two Skips) to steal a random card from an opponent. With three of a kind you can demand any one specific card type from an opponent! Choose wisely because if they don't have the specified card type, you get nothing. And lastly if you play five cards of five different types you can take a card from the discard pile!",
       multipleImages: [
-        { src: heisenbugBase, alt: "Heisenbug - Disappears when you try to debug it" },
-        { src: legacyBugBase, alt: "Legacy Bug - From old code that no one understands" },
-        { src: megaBugBase, alt: "Mega Bug - Someone should deep clean megalounge" },
-        { src: syntaxBugBase, alt: "Syntax Bug - Small but annoying compilation errors" },
-        { src: bathroomDrainBugBase, alt: "Bathroom Drain Bug - Make sure to pour water down the drain" },
+        { src: heisenbug, alt: "Heisenbug - Disappears when you try to debug it" },
+        { src: legacyBug, alt: "Legacy Bug - From old code that no one understands" },
+        { src: megaBug, alt: "Mega Bug - Someone should deep clean megalounge" },
+        { src: syntaxBug, alt: "Syntax Bug - Small but annoying compilation errors" },
+        { src: bathroomDrainBug, alt: "Bathroom Drain Bug - Make sure to pour water down the drain" },
       ],
     },
     {

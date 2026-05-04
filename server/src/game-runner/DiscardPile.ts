@@ -25,36 +25,14 @@ export class DiscardPile {
         player.hand.push(cardChoice);
     }
 
-    /**
-     * Gets the DiscardPile object's pile.
-     * 
-     * @return the Card's type
-     */
-    public get pile(): Card[] {
-        return this._pile;
-    }
+    public get pile(): Card[] { return this._pile; }
+    public set pile(value: Card[]) { this._pile = value; }
 
-    /**
-     * Sets the DiscardPile object's pile.
-     * 
-     * @param value the edited pile.
-     */
-    public set pile(value: Card[]) {
-        this._pile = value;
-    }
-
-    /**
-     * allows you to add cards to the discard pile
-     * @param cards 
-     */
     public addCards(cards: Card[]) {
         this._pile.push(...cards);
     }
 
-    /**
-     * returns the top card of the discard pile, or null if the pile is empty so you can display the top card
-     */
     public get topCard(): Card | null {
-    return this._pile.length > 0 ? this._pile[this._pile.length - 1] : null;
+        return this._pile.length > 0 ? this._pile[this._pile.length - 1] : null;
     }
 }

@@ -1,8 +1,6 @@
-// GameManager.ts
 import { Game } from './Game';
 import { Player } from './Player';
 
-//I had to make some changes here, switched it over to a singleton pattern
 export class GameManager {
     private static instance: GameManager;
     
@@ -24,7 +22,6 @@ export class GameManager {
         this.activeGames.set(roomId, game);
     }
 
-    //added a get game function so you can grab games by room id
     public getGame(roomId: string): Game | undefined {
         return this.activeGames.get(roomId);
     }

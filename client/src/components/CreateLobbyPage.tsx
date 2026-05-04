@@ -4,8 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLobby } from '../context/LobbyContext';
 
-// we can change this accordingly and figure how to store i just wanted to see what this would look like
-
 export default function CreateLobbyPage() {
   const navigate = useNavigate();
   const { currentFrontendUser } = useAuth();
@@ -27,12 +25,11 @@ export default function CreateLobbyPage() {
   }
 
     try {
-      console.log("creating lobby for user id", currentFrontendUser._id);
       const code = await createNewLobby(currentFrontendUser._id);
       setLobbyCode(code);
 
     } catch (err) {
-      console.error("THE HIDDEN ERROR:", err);
+      console.error(err);
       setError("Failed to create lobby. Please try again.");
     } finally {
       setIsLoading(false);

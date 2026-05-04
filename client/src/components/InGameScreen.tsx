@@ -1,18 +1,27 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from "framer-motion";
 import { useGame } from "../context/GameContext";
 import { useAuth } from "../context/AuthContext";
 import { useLobby } from "../context/LobbyContext";
 import CardBack from "./CardBack";
 import CardFront from "./CardFront";
-import DrawDeck from "./DrawDeck"; 
-import DiscardDeck from "./DiscardDeck"; 
-import { CardType } from "../types/types";
+import DrawDeck from "./DrawDeck";
+import DiscardDeck from "./DiscardDeck";
+import { CardType, Card } from "../types/types";
+import InGameModals from "./InGameModals";
 
 
-//Player main screen definition
+interface FlyAnim {
+  key: string;
+  card: Card | null;
+  fromX: number; fromY: number;
+  toX: number; toY: number;
+  cardW: number; cardH: number;
+}
+
+type RectLike = { left: number; top: number; width: number; height: number };
+
 export default function InGameScreen() {
   const { 
 myHand, 
@@ -39,50 +48,43 @@ myHand,
     eliminatedPlayerIds,
     explosionNotification,
     submitFiveCardChoice,
-    requestInitialState
+    requestInitialState,
+    cardAnimQueue,
+    shiftCardAnim,
+    playerHandCounts,
   } = useGame();
 
-  const getCardDescription = (type: string, selectedCount: number = 1, isAllSameType: boolean = true, uniqueCount: number = 1) => {
-
-    if (isAllSameType) {
-      if (selectedCount === 2) {
-        return "TWO CARD COMBO: Play 2 of the same card to steal a random card from an opponent.";
-      }else if (selectedCount === 3) {
-        return "THREE CARD COMBO: Play 3 of the same card type to choose a card from an opponent's hand if they have one";
-      }else{
-
-      }
-    
-  }
-
-  if (selectedCount === 5 && uniqueCount === 5) {
-    return "FIVE CARD COMBO: Play 5 different cards to take any card from the discard pile.";
-  }
-  const descriptions: Record<string, string> = {
-    Attack: "End your turn without drawing. Force the next player to take two turns.",
-    Defuse: "The only card that can save you from an Exploding Kauffman.",
-    Skip: "Immediately end a turn without drawing a card.",
-    Favor: "Force another player to give you one card of their choice.",
-    See_the_Future: "Privately view the top 3 cards of the deck.",
-    Shuffle: "Shuffle the Draw Pile.",
-    Nope: "Stop any action except for an Exploding Kauffman or defuse.",
-    Legacy_Bug: "A bug that needs to be put in a retirement home. Useless on it's own, but powerful when used in combos.",
-    Bathroom_Drain_Bug: "A nasty disgusting bug that crawls out of your drain. Useless on it's own, but powerful when used in combos.",
-    Mega_Bug: "The Mega Bug like to live in Megalounge and host mega parties. Useless on it's own, but powerful when used in combos.",
-    Syntax_Bug: "a bug whose presnce is revealed by the unfortunate red squiggly line. Useless on it's own, but powerful when used in combos.",
-    Heisenbug: "A sneaky bug that changes its behavior when you try to observe it. Useless on it's own, but powerful when used in combos.",
-  };
-  return descriptions[type] || "A mysterious card with unknown powers.";
-};
-
-  
   const { currentLobby } = useLobby();
   const { currentFrontendUser } = useAuth();
   const { roomId: paramRoomId } = useParams();
-  const [defuseIndex, setDefuseIndex] = useState<number>(0);
   const [showInfoModal, setShowInfoModal] = useState(false);
-  const navigate = useNavigate();
-  
+
+  const discardWrapRef = useRef<HTMLDivElement>(null);
+  const myHandAreaRef = useRef<HTMLDivElement>(null);
+  const opponentEls = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const [flyingCards, setFlyingCards] = useState<FlyAnim[]>([]);
+
+  const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const pendingPlayPositions = useRef<Map<number, RectLike>>(new Map());
+
+  const spawnFly = useCallback((card: Card | null, from: RectLike, to: RectLike, delay = 0) => {
+    const cardW = Math.round(to.width) || 112;
+    const cardH = Math.round(to.height) || 160;
+    const key = `${Date.now()}-${Math.random()}`;
+    const entry: FlyAnim = {
+      key, card, cardW, cardH,
+      fromX: from.left + from.width / 2 - cardW / 2,
+      fromY: from.top + from.height / 2 - cardH / 2,
+      toX: to.left,
+      toY: to.top,
+    };
+    const spawn = () => {
+      setFlyingCards(prev => [...prev, entry]);
+      setTimeout(() => setFlyingCards(prev => prev.filter(f => f.key !== key)), 600);
+    };
+    delay ? setTimeout(spawn, delay) : spawn();
+  }, []);
+
   const roomId = paramRoomId || currentLobby?.code || "ROOM_ID";
 
   useEffect(() => {
@@ -91,29 +93,50 @@ myHand,
     }
   }, [roomId, currentFrontendUser]);
 
-  // State to track which cards the user has selected to play (for combos)
+  useEffect(() => {
+    if (!cardAnimQueue.length) return;
+    const trigger = cardAnimQueue[0];
+    shiftCardAnim();
+
+    const discardEl = discardWrapRef.current;
+    const handEl = myHandAreaRef.current;
+    if (!discardEl || !handEl) return;
+
+    const discardRect = discardEl.getBoundingClientRect();
+    const handRect = handEl.getBoundingClientRect();
+
+    if (trigger.type === 'player_play') {
+      const isMe = trigger.playerId === currentFrontendUser?._id;
+      if (isMe) {
+        trigger.cards.forEach((card, i) => {
+          const saved = pendingPlayPositions.current.get(card.id) ?? handRect;
+          spawnFly(card, saved, discardRect, i * 120);
+        });
+        pendingPlayPositions.current.clear();
+      } else {
+        const oppEl = opponentEls.current.get(trigger.playerId);
+        const fromRect: RectLike = oppEl?.getBoundingClientRect() ?? handRect;
+        trigger.cards.forEach((card, i) => spawnFly(card, fromRect, discardRect, i * 120));
+      }
+    }
+  }, [cardAnimQueue, shiftCardAnim, spawnFly, currentFrontendUser]);
+
   const [selectedCardIds, setSelectedCardIds] = useState<number[]>([]);
   const selectedBaseCard = myHand.find(c => c.id === selectedCardIds[0]);
-  
-  // Filter out the current user to display opponents
+
   const opponents = currentLobby?.players.filter(
     (p) => p._id !== currentFrontendUser?._id
   ) || [];
 
   const isMyTurn = activeUserId === currentFrontendUser?._id;
 
-  // Check if this player has a Nope card in hand
   const hasNopeCard = myHand.some(c => c.type === CardType.Nope);
 
-  /**
-   * Look up a player's display name from the lobby player list.
-   */
   const getPlayerName = (playerId: string): string => {
     const player = currentLobby?.players.find(p => p._id === playerId);
     return player?.username || "Unknown";
   };
 
-  // Toggle card selection
   const handleCardClick = (cardId: number) => {
     setSelectedCardIds((prev) =>
       prev.includes(cardId)
@@ -122,16 +145,18 @@ myHand,
     );
   };
 
-  // Play the selected cards
   const handlePlaySelected = () => {
     if (selectedCardIds.length > 0) {
+      selectedCardIds.forEach(id => {
+        const el = cardRefs.current.get(id);
+        if (el) pendingPlayPositions.current.set(id, el.getBoundingClientRect());
+      });
       playCard(roomId, selectedCardIds);
       setSelectedCardIds([]); // Clear selection after playing
     }
   };
 
   return (
-    // <div className="relative w-full h-screen bg-emerald-800 text-white overflow-hidden flex flex-col">
     <div 
       className="relative w-full h-screen overflow-hidden flex flex-col selection:bg-red-100"
       style={{
@@ -153,7 +178,6 @@ myHand,
         </motion.button>
       )}
       {/* --- action messages + play errors --- */} 
-      {/* Will consolidate with emmas later */}
       <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-3 pointer-events-none">
         <AnimatePresence>
           {actionMessage && (
@@ -233,15 +257,14 @@ myHand,
       {/* --- OPPONENTS AREA --- */}
       <div className="h-1/4 w-full flex justify-center items-start pt-8 gap-12">
         {opponents.map((opp) => {
-          // Check if it is this specific opponent's turn
           const isOpponentTurn = activeUserId === opp._id;
 
           return (
-            <div 
-              key={opp._id} 
+            <div
+              key={opp._id}
               className={`flex flex-col items-center gap-2 transition-all duration-300 ${
-                eliminatedPlayerIds.includes(opp._id) 
-                    ? 'opacity-30' 
+                eliminatedPlayerIds.includes(opp._id)
+                    ? 'opacity-30'
                     : isOpponentTurn ? 'scale-110 drop-shadow-2xl opacity-100' : 'opacity-50'
             }`}
             >
@@ -250,8 +273,8 @@ myHand,
                 {isOpponentTurn && <span className="text-amber-400 font-bold text-sm animate-pulse tracking-widest">THINKING...</span>}
               </div>
 
-              <div className="relative flex -space-x-8">
-                {[...Array(5)].map((_, i) => (
+              <div ref={(el) => opponentEls.current.set(opp._id, el)} className="relative flex -space-x-8">
+                {[...Array(playerHandCounts[opp._id] ?? 0)].map((_, i) => (
                   <CardBack key={i} className="w-12 h-16" />
                 ))}
                 {eliminatedPlayerIds.includes(opp._id) && (
@@ -279,13 +302,17 @@ myHand,
           
           
           <div className="flex flex-col items-center gap-3">
-            <DrawDeck roomId={roomId} cardCount={deckCount} className="w-28 h-40" />
+            <div>
+              <DrawDeck roomId={roomId} cardCount={deckCount} className="w-28 h-40" />
+            </div>
             <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Draw</span>
           </div>
 
           
           <div className="flex flex-col items-center gap-3">
-            <DiscardDeck lastCard={lastPlayedCard} className="w-28 h-40" />
+            <div ref={discardWrapRef}>
+              <DiscardDeck lastCard={lastPlayedCard} className="w-28 h-40" />
+            </div>
             <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Discard</span>
           </div>
 
@@ -320,7 +347,7 @@ myHand,
       </div>
 
       {/* --- PLAYER HAND AREA --- */}
-      <div className={`relative z-20 h-1/3 w-full flex flex-col items-center justify-end pb-10 transition-colors duration-500 ${isMyTurn ? 'bg-gradient-to-t from-amber-500/20 to-transparent' : 'bg-gradient-to-t from-black/60 to-transparent'}`}>
+      <div ref={myHandAreaRef} className={`relative z-20 h-1/3 w-full flex flex-col items-center justify-end pb-10 transition-colors duration-500 ${isMyTurn ? 'bg-gradient-to-t from-amber-500/20 to-transparent' : 'bg-gradient-to-t from-black/60 to-transparent'}`}>
         
         <div className="mb-4 flex items-center gap-4">
           <h2 className={`text-xl font-bold italic tracking-tighter ${isMyTurn ? 'text-amber-400 animate-pulse' : 'text-gray-400'}`}>
@@ -341,15 +368,16 @@ myHand,
         </div>
 
         {/* Hand Render (card fanning effect)*/}
-        <div className={`flex justify-center h-64 px-8 w-full transition-all duration-300}`}>
-          <div className="overflow-x-auto overflow-y-visible no-scrollbar w-full flex justify-center">
-            <div className="flex flex-nowrap min-w-max px-20 pt-20 pb-10">
+        <div className={`flex justify-center h-64 px-8 w-full transition-all duration-300`}>
+          <div className="overflow-x-auto overflow-y-hidden w-full flex">
+            <div className="flex flex-nowrap min-w-max px-20 pt-20 pb-10 mx-auto">
           {myHand.length > 0 ? (
             myHand.map((card, index) => {
               const isSelected = selectedCardIds.includes(card.id);
               return (
-                <div 
-                  key={card.id} 
+                <div
+                  key={card.id}
+                  ref={(el) => { if (el) cardRefs.current.set(card.id, el); else cardRefs.current.delete(card.id); }}
                   className={`relative cursor-pointer transition-all duration-300 ease-out transform-gpu
                     ${index === 0 ? 'ml-0' : '-ml-4'} 
                     ${isSelected 
@@ -362,7 +390,7 @@ myHand,
                     card={card}
                     onClick={() => handleCardClick(card.id)} 
                     // Add a ring and translate upward if the card is currently selected
-                    className={`w-24 h-36 cursor-pointer transition-all ${
+                    className={`w-32 h-44 cursor-pointer transition-all ${
                       isSelected ? '-translate-y-6 ring-4 ring-amber-500 rounded-lg' : ''
                     }`}
                   />
@@ -383,12 +411,10 @@ myHand,
         {explosionNotification && (
           <motion.div
             key="explosion-notification"
-            // Move the -50% translation into Framer Motion's state
             initial={{ opacity: 0, y: -40, x: "-50%", scale: 0.9 }}
             animate={{ opacity: 1, y: 0, x: "-50%", scale: 1 }}
             exit={{ opacity: 0, y: -40, x: "-50%", scale: 0.9 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            // Removed -translate-x-1/2 from className
             className="absolute top-6 left-1/2 z-[70] pointer-events-none"
           >
             <div className="bg-[#B81C27] text-[#FCF8EE] px-8 py-4 rounded-2xl shadow-2xl text-2xl font-bold uppercase tracking-widest animate-bounce">
@@ -399,306 +425,49 @@ myHand,
       </AnimatePresence>
 
 
-      {/* INTERACTIVE MODALS */}
+      <InGameModals
+        roomId={roomId}
+        defuseRequest={defuseRequest}
+        submitDefuseLocation={submitDefuseLocation}
+        seeTheFutureCards={seeTheFutureCards}
+        closeSeeTheFuture={closeSeeTheFuture}
+        actionRequiresTarget={actionRequiresTarget}
+        opponents={opponents}
+        eliminatedPlayerIds={eliminatedPlayerIds}
+        submitTarget={submitTarget}
+        fiveCardComboTypes={fiveCardComboTypes}
+        submitFiveCardChoice={submitFiveCardChoice}
+        favorRequest={favorRequest}
+        myHand={myHand}
+        submitFavorCard={submitFavorCard}
+        showInfoModal={showInfoModal}
+        setShowInfoModal={setShowInfoModal}
+        selectedBaseCard={selectedBaseCard}
+        selectedCardIds={selectedCardIds}
+        explodedPlayerId={explodedPlayerId}
+        currentUserId={currentFrontendUser?._id}
+        gameOver={gameOver}
+        dismissExplosion={dismissExplosion}
+      />
 
-      {/* Defuse Slider Modal */}
-      {defuseRequest && (
-        <div className="absolute inset-0 bg-red-900/90 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-[#FCF8EE] text-[#0F0F0F] p-8 rounded-2xl max-w-md w-full shadow-2xl flex flex-col items-center">
-             <h2 className="text-5xl font-bold uppercase tracking-[0.02em] mb-2 text-[#B81C27] animate-pulse">
-                 DEFUSED!
-             </h2>
-             <p className="mb-6 text-gray-600 text-xl text-center">
-                 You stopped the explosion! Now, secretly place the Exploding Kauffman back into the deck.
-             </p>
-             
-             <div className="w-full mb-8">
-                 <label className="font-normal text-lg uppercase tracking-widest text-gray-500 flex justify-between">
-                     <span>Top</span>
-                     <span>Bottom</span>
-                 </label>
-                 
-                 <input 
-                     type="range" 
-                     min="0" 
-                     max={defuseRequest.maxIndex} 
-                     defaultValue="0"
-                     onChange={(e) => setDefuseIndex(Number(e.target.value))}
-                     className="w-full mt-2 accent-[#B81C27] h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                 />
-                 
-                 <p className="text-center mt-4 font-bold text-2xl text-[#B81C27] uppercase">
-                     Position: {defuseIndex === 0 ? "Top Card" : defuseIndex === defuseRequest.maxIndex ? "Bottom Card" : `Depth: ${defuseIndex}`}
-                 </p>
-             </div>
-
-             <motion.button
-                 whileHover={{ scale: 1.02 }}
-                 whileTap={{ scale: 0.98 }}
-                 onClick={() => submitDefuseLocation(roomId, defuseIndex)}
-                 className="bg-[#B81C27] hover:bg-[#C81C27] text-[#FCF8EE] px-8 py-4 rounded-[4px] font-normal text-2xl uppercase tracking-[0.02em] shadow-sm w-full transition-colors"
-             >
-                 Hide Kauffman
-             </motion.button>
-          </div>
-        </div>
-      )}
-
-      
-
-
-      {/* See the Future Modal */}
-      {seeTheFutureCards && seeTheFutureCards.length > 0 && (
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-[#FCF8EE] text-[#0F0F0F] p-10 rounded-2xl max-w-3xl w-full shadow-2xl flex flex-col items-center">
-            <h2 className="text-5xl font-bold uppercase tracking-[0.02em] mb-2 text-[#0F0F0F]">
-              The Future
-            </h2>
-            <p className="mb-8 text-gray-500 text-xl uppercase tracking-widest">
-              Here are the top {seeTheFutureCards.length} cards of the deck.
-            </p>
-            
-            <div className="flex gap-8 mb-8">
-              {seeTheFutureCards.map((card, idx) => (
-                <div key={`${card.id}-${idx}`} className="flex flex-col items-center gap-3">
-                   <span className="font-bold text-gray-400 uppercase tracking-widest text-lg">
-                     {idx === 0 ? "Top Card" : `Card ${idx + 1}`}
-                   </span>
-                   <CardFront card={card} animate={false} className="w-36 h-52 rounded-lg" />
-                </div>
-              ))}
-            </div>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={closeSeeTheFuture}
-              className="bg-[#B81C27] hover:bg-[#C81C27] text-[#FCF8EE] px-16 py-4 rounded-[4px] text-2xl font-normal uppercase tracking-[0.02em] transition-colors"
-            >
-              Done
-            </motion.button>
-          </div>
-        </div>
-      )}
-
-      {/* Target Selection Modal (For Favors and Combos) */}
-      {actionRequiresTarget && (
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-[#FCF8EE] text-[#0F0F0F] p-10 rounded-2xl max-w-md w-full shadow-2xl">
-            <h2 className="text-5xl font-bold uppercase tracking-[0.02em] mb-2 text-[#0F0F0F] text-center">
-              Select Target
-            </h2>
-            <p className="mb-8 text-gray-500 text-xl text-center">
-              You played a {actionRequiresTarget.replace(/_/g, " ")}. Who do you want to target?
-            </p>
-
-            {actionRequiresTarget === 'Three_Card_Combo' && (
-              <div className="mb-6">
-                <label className="font-normal text-xl uppercase tracking-widest text-gray-900">
-                  Card Type to Steal:
-                </label>
-                <select 
-                  id="requestedCardType" 
-                  className="block w-full mt-2 p-4 bg-gray-100 focus:ring-2 focus:ring-[#C81C27] focus:outline-none border-none rounded-xl text-xl font-normal uppercase transition-all"
-                >
-                  {Object.values(CardType).filter(type => type !== CardType.Exploding_Kauffman).map(type => (
-                    <option key={type} value={type}>{type.replace(/_/g, " ")}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-4">
-              {opponents.filter(opp => !eliminatedPlayerIds.includes(opp._id)).map(opp => (
-                <motion.button
-                  key={opp._id}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    const requestedType = actionRequiresTarget === 'Three_Card_Combo'
-                      ? (document.getElementById('requestedCardType') as HTMLSelectElement).value as CardType
-                      : undefined;
-                    
-                    submitTarget(roomId, opp._id, actionRequiresTarget, requestedType);
-                  }}
-                  className="w-full bg-white border-2 border-gray-200 hover:border-[#B81C27] text-[#0F0F0F] py-4 px-4 rounded-[4px] text-2xl font-normal uppercase tracking-[0.02em] transition-colors"
-                >
-                  {opp.username}
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Five Card Combo Type Picker Modal */}
-      {fiveCardComboTypes && fiveCardComboTypes.length > 0 && (
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-[#FCF8EE] text-[#0F0F0F] p-10 rounded-2xl max-w-md w-full shadow-2xl">
-            <h2 className="text-5xl font-bold uppercase tracking-[0.02em] mb-2 text-[#0F0F0F] text-center">
-              Five Card Combo
-            </h2>
-            <p className="mb-8 text-gray-500 text-xl text-center">
-              Pick a card type to take from the discard pile.
-            </p>
- 
-            <div className="flex flex-col gap-3 max-h-80 overflow-y-auto">
-              {fiveCardComboTypes.filter(type => type !== CardType.Exploding_Kauffman).map(type => (
-                <motion.button
-                  key={type}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => submitFiveCardChoice(roomId, type)}
-                  className="w-full bg-white border-2 border-gray-200 hover:border-[#B81C27] text-[#0F0F0F] py-4 px-4 rounded-[4px] text-2xl font-normal uppercase tracking-[0.02em] transition-colors"
-                >
-                  {type.replace(/_/g, " ")}
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Favor Request Modal (For the victim) */}
-      {favorRequest && (
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-[#FCF8EE] text-[#0F0F0F] p-10 rounded-2xl max-w-4xl w-full shadow-2xl">
-            <h2 className="text-5xl font-bold uppercase tracking-[0.02em] mb-2 text-[#0F0F0F] text-center">
-              Favor Requested!
-            </h2>
-            <p className="mb-8 text-gray-600 text-2xl text-center">
-              <span className="font-bold text-[#B81C27]">{favorRequest.sourcePlayerName}</span> played a Favor on you. Select a card from your hand to give them.
-            </p>
-            
-            <div className="flex gap-4 overflow-x-auto pb-4 px-4 justify-left">
-              {myHand.map(card => (
-                <motion.div 
-                  key={card.id} 
-                  whileHover={{ scale: 1.05, y: -10 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => submitFavorCard(roomId, card.id, favorRequest.sourceUserId)}
-                  className="shrink-0 cursor-pointer"
-                >
-                  <CardFront card={card} animate={false} className="w-36 h-60  rounded-lg" />
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* --- CARD INFO POPUP --- */}
-      {showInfoModal && selectedBaseCard && (
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[60]">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-[#FCF8EE] p-8 rounded-3xl max-w-sm w-full shadow-2xl flex flex-col items-center text-center border-4 border-[#B81C27]"
+      <AnimatePresence>
+        {flyingCards.map(anim => (
+          <motion.div
+            key={anim.key}
+            className="fixed pointer-events-none z-[40]"
+            style={{ top: 0, left: 0, width: anim.cardW, height: anim.cardH }}
+            initial={{ x: anim.fromX, y: anim.fromY, opacity: 1, rotate: 0 }}
+            animate={{ x: anim.toX, y: anim.toY, opacity: 1, rotate: 0 }}
+            exit={{ opacity: 0, transition: { duration: 0.1 } }}
+            transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
-            <div className="mb-6">
-              <CardFront card={selectedBaseCard} animate={false} className="w-40 h-56 mx-auto shadow-2xl" />
-            </div>
-
-            {(() => {
-              const selectedCards = myHand.filter(c => selectedCardIds.includes(c.id));
-              const count = selectedCards.length;
-              const uniqueTypes = new Set(selectedCards.map(c => c.type)).size;
-              const allSame = uniqueTypes === 1;
-
-              const isFiveCardCombo = count === 5 && uniqueTypes === 5;
-              const isMultiCombo = allSame && (count === 2 || count === 3);
-              const isValidCombo = isFiveCardCombo || isMultiCombo;
-
-              const displayTitle = isValidCombo 
-                ? `${count} Card Combo` 
-                : selectedBaseCard.type.replace(/_/g, " ");
-
-              const displayDescription = getCardDescription(
-                selectedBaseCard.type, 
-                count, 
-                allSame, 
-                uniqueTypes
-              );
-  
-
-              
-              return (
-              <>
-                <h3 className="text-4xl font-bold uppercase text-[#0F0F0F] mb-2">
-                  {displayTitle}
-                </h3>
-                <p className="text-gray-600 text-lg leading-relaxed mb-8 font-sans">
-                  {displayDescription}
-                </p>
-              </>
-              );
-      })()}
-
-            <button
-              onClick={() => setShowInfoModal(false)}
-              className="w-full bg-[#B81C27] text-white py-4 rounded-xl font-bold uppercase tracking-widest hover:bg-red-700 transition-colors shadow-lg"
-            >
-              Back to Game
-            </button>
+            {anim.card
+              ? <CardFront card={anim.card} animate={false} className="w-full h-full shadow-2xl" />
+              : <CardBack className="w-full h-full shadow-2xl" />
+            }
           </motion.div>
-        </div>
-      )}
-
-      {/* Player Loss Modal */}
-      {explodedPlayerId === currentFrontendUser?._id && !gameOver && (
-        <div className="absolute inset-0 bg-red-900/90 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-[#FCF8EE] text-[#0F0F0F] p-8 rounded-2xl max-w-md w-full shadow-2xl flex flex-col items-center">
-            <h2 className="text-5xl font-bold uppercase tracking-[0.02em] mb-2 text-[#B81C27] animate-pulse">
-              YOU EXPLODED 💥
-            </h2>
-            <p className="mb-8 text-gray-600 text-xl text-center">
-              You drew an Exploding Kauffman and have no Defuse. You're out!
-            </p>
-            <div className="flex flex-col gap-4 w-full">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => navigate('/')}
-                className="bg-[#B81C27] hover:bg-[#C81C27] text-[#FCF8EE] px-8 py-4 rounded-[4px] font-normal text-2xl uppercase tracking-[0.02em] shadow-sm w-full transition-colors"
-              >
-                Return to Lobby
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => dismissExplosion()}
-                className="bg-white border-2 border-gray-200 hover:border-[#B81C27] text-[#0F0F0F] px-8 py-4 rounded-[4px] font-normal text-2xl uppercase tracking-[0.02em] w-full transition-colors"
-              >
-                Spectate
-              </motion.button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Game Over Modal */}
-      {gameOver && (
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-[#FCF8EE] text-[#0F0F0F] p-8 rounded-2xl max-w-md w-full shadow-2xl flex flex-col items-center">
-            <h2 className="text-5xl font-bold uppercase tracking-[0.02em] mb-2 text-[#B81C27]">
-              {gameOver.winnerId === currentFrontendUser?._id ? '🏆 YOU WIN!' : 'GAME OVER'}
-            </h2>
-            <p className="mb-8 text-gray-600 text-xl text-center">
-              {gameOver.winnerId === currentFrontendUser?._id 
-                ? 'You are the last student standing!' 
-                : `${gameOver.winnerName} wins!`}
-            </p>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate('/')}
-              className="bg-[#B81C27] hover:bg-[#C81C27] text-[#FCF8EE] px-8 py-4 rounded-[4px] font-normal text-2xl uppercase tracking-[0.02em] shadow-sm w-full transition-colors"
-            >
-              Return to Lobby
-            </motion.button>
-          </div>
-        </div>
-      )}
+        ))}
+      </AnimatePresence>
 
     </div>
   );

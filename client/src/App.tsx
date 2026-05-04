@@ -12,21 +12,6 @@ import InGameScreen from "./components/InGameScreen";
 import ProfilePage from "./components/ProfilePage";
 import HowToPlay from "./components/HowToPlay";
 
-
-// --- Placeholder Pages (Move these to separate files later) ---
-
-const GamePage = () => (
-  <div className="p-10 text-center">
-    <h1>Game Room</h1>
-  </div>
-);
-const HowToPage = () => (
-  <div className="p-10 text-center">
-    <h1>How to Play</h1>
-  </div>
-);
-
-
 function App() {
   return (
     <AuthProvider>

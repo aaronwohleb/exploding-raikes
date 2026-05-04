@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 
@@ -20,7 +20,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     // Initialize Socket if user is logged in by pulling user's JWT
     const token = localStorage.getItem('token');
     if (currentFrontendUser && token && !socket) {
-      const newSocket = io('http://localhost:3001', {
+      const newSocket = io(import.meta.env.VITE_WS_URL, {
         autoConnect: true,
         auth: { token }, 
         reconnection: true,
@@ -29,17 +29,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
       setSocket(newSocket);
 
-      // listeners
-      newSocket.on('connect', () => {
-        console.log("socket connected with ID:", newSocket.id);
-        setIsConnected(true);
-      });
-
-      newSocket.on('disconnect', () => {
-        console.log("socket disconnected")
-        setIsConnected(false);
-    });
-      // TODO: Add global game listeners to catch global events (ie kicking a player)
+      newSocket.on('connect', () => setIsConnected(true));
+      newSocket.on('disconnect', () => setIsConnected(false));
 
       newSocket.connect();
 

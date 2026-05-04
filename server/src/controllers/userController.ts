@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import BackendUser from "../types/BackendUser";
 import { toFrontendUser } from "./authController";
  
-// UPDATE USERNAME
 export const updateUsername = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
@@ -27,7 +26,6 @@ export const updateUsername = async (req: Request, res: Response) => {
   }
 };
 
-// INCREMENT PLAYER STATS
 export const incrementStats = async (
   userId: string,
   increments: { gamesPlayed?: number; wins?: number; timesExploded?: number }
@@ -39,7 +37,6 @@ export const incrementStats = async (
   await BackendUser.findByIdAndUpdate(userId, { $inc: inc });
 };
 
-// DELETE ACCOUNT
 export const deleteAccount = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;

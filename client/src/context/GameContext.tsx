@@ -1,24 +1,19 @@
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { useGameSocket } from './SocketContext';
 import { Card, CardRequestType, CardType, GameState, NopeWindowState } from '../types/types';
 import { useAuth } from './AuthContext'; 
 
-/**
- * Describes the shape of the GameContext value available to any component inside GameProvider.
- */
 interface GameContextType {
   myHand: Card[];
   lastPlayedCard: Card | null;
   // Only populated after playing See the Future.
   seeTheFutureCards: Card[];
-  closeSeeTheFuture: () => void; // Function to close the See the Future view
+  closeSeeTheFuture: () => void;
 
   deckCount: number;
   activeUserId: string;
 
-  // If not null, the UI should prompt the user to pick a target player
   actionRequiresTarget: CardRequestType | null;
-  // If not null, the UI should prompt the user to pick a card to give away
   favorRequest: { sourceUserId: string, sourcePlayerName: string } | null;
 
   nopeWindow: NopeWindowState | null;
@@ -34,9 +29,7 @@ interface GameContextType {
   dismissExplosion: () => void;
 
   // EMITTERS 
-  // Emits a draw_card event to the server.
   drawCard: (roomId: string) => void;
-  // Emits a play_card event to the server with the selected cards.
   playCard: (roomId: string, cardIds: number[]) => void;
   playNope: (roomId: string) => void;
 
@@ -49,16 +42,19 @@ interface GameContextType {
   submitDefuseLocation: (roomId: string, insertIndex: number) => void;
   eliminatedPlayerIds: string[];
   explosionNotification: string | null;
+  cardAnimQueue: CardAnimTrigger[];
+  shiftCardAnim: () => void;
+  playerHandCounts: Record<string, number>;
 }
+
+export type CardAnimTrigger =
+  | { type: 'my_draw'; card: Card }
+  | { type: 'my_receive'; card: Card; fromPlayerId?: string }
+  | { type: 'opponent_draw'; playerId: string }
+  | { type: 'player_play'; playerId: string; cards: Card[] };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
-/**
- * Wraps the game UI and provides game socket events and actions to all child components.
- * Handles listeners in a useEffect and exposes emitters as functions.
- *
- * @param children - React children that will have access to this context.
- */
 export function GameProvider({ children }: { children: ReactNode }) {
   const { socket } = useGameSocket();
   const { currentFrontendUser } = useAuth();
@@ -83,6 +79,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [eliminatedPlayerIds, setEliminatedPlayerIds] = useState<string[]>([]);
   const [explosionNotification, setExplosionNotification] = useState<string | null>(null);
 
+  const [playerHandCounts, setPlayerHandCounts] = useState<Record<string, number>>({});
+  const [cardAnimQueue, setCardAnimQueue] = useState<CardAnimTrigger[]>([]);
+  const myHandTrackerRef = useRef<Card[]>([]);
+  const lastStealerIdRef = useRef<string | null>(null);
+  const pushAnim = (trigger: CardAnimTrigger) =>
+    setCardAnimQueue(prev => [...prev, trigger]);
+  const shiftCardAnim = useCallback(
+    () => setCardAnimQueue(prev => prev.slice(1)),
+    []
+  );
 
   const [nopeWindow, setNopeWindow] = useState<NopeWindowState | null>(null);
   const nopeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -126,20 +132,27 @@ export function GameProvider({ children }: { children: ReactNode }) {
      * Only sent to the player who drew — not to everyone.
      */
     const handleUpdateHand = (data: { fullHand: Card[], justDrawnCard?: Card | null }) => {
-      console.log('drawn_card :', data.justDrawnCard);
-      console.log('full hand:', data.fullHand);
+      const prevHand = myHandTrackerRef.current;
       setMyHand(data.fullHand);
-      // TODO: trigger animation for justDrawnCard if not null
+      myHandTrackerRef.current = data.fullHand;
+      if (data.justDrawnCard) {
+        pushAnim({ type: 'my_draw', card: data.justDrawnCard });
+      } else {
+        const newCards = data.fullHand.filter(c => !prevHand.some(p => p.id === c.id));
+        const fromPlayerId = lastStealerIdRef.current ?? undefined;
+        lastStealerIdRef.current = null;
+        newCards.forEach(card => pushAnim({ type: 'my_receive', card, fromPlayerId }));
+      }
     };
 
     /**
      * Broadcast to ALL players when any player draws a card.
-     * Contains only who drew — card details stay private via receive_card.
      */
     const handlePlayerDrawsCard = (data: { playerId: string, deckCount: number }) => {
-      console.log('player_draws_card:', data.playerId);
       setDeckCount(data.deckCount);
-      // TODO: animate who drew card?
+      if (data.playerId !== currentFrontendUser?._id) {
+        pushAnim({ type: 'opponent_draw', playerId: data.playerId });
+      }
     };
 
     const handleDefuseRequiresIndex = (data: { maxIndex: number }) => {
@@ -148,7 +161,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     /**
      * Broadcast to ALL players when any player plays a card.
-     * Contains the card type and all cards involved so every player can see what was played.
      */
     const handlePlayerPlaysCard = (data: { 
       playerId: string, 
@@ -157,9 +169,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
       targetPlayerName?: string,
       actionType?: CardRequestType,
     }) => {
-      console.log(`player ${data.playerId} plays cards:`, data.cards);
+      if (
+        data.targetPlayerId === currentFrontendUser?._id &&
+        (data.actionType === CardRequestType.Favor ||
+         data.actionType === CardRequestType.Two_Card_Combo ||
+         data.actionType === CardRequestType.Three_Card_Combo)
+      ) {
+        lastStealerIdRef.current = data.playerId;
+      }
 
-      setLastPlayedCard(data.cards[data.cards.length - 1]);
+      const staggerDelay = Math.max(0, data.cards.length - 1) * 120;
+      setTimeout(() => setLastPlayedCard(data.cards[data.cards.length - 1]), 450 + staggerDelay + 50);
 
       // Open/restart the Nope window
       setNopeWindow({
@@ -170,6 +190,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         startedAt: Date.now(),
       });
       resetNopeWindowTimer();
+      pushAnim({ type: 'player_play', playerId: data.playerId, cards: data.cards });
     };
 
     /**
@@ -177,7 +198,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
      * Contains the top 3 cards of the draw deck in order.
      */
     const handleSeeTheFuture = (data: {cards: Card[]}) => {
-      console.log('see_the_future — top 3 cards:', data.cards);
       setSeeTheFutureCards(data.cards);
       setNopeWindow(null);
     };
@@ -185,59 +205,52 @@ export function GameProvider({ children }: { children: ReactNode }) {
     /**
      * Generalized game state update broadcasted to all users
      */
-    const handleGameStateUpdate = (data: { activeUserId: string, topCard: Card, deckCount: number }) => {
+    const handleGameStateUpdate = (data: { activeUserId: string, topCard: Card, deckCount: number, playerHandCounts?: Record<string, number> }) => {
       setActiveUserId(data.activeUserId);
       if (data.topCard) {
         setLastPlayedCard(data.topCard);
       }
       setDeckCount(data.deckCount);
+      if (data.playerHandCounts) {
+        setPlayerHandCounts(data.playerHandCounts);
+      }
     };
 
     // --- INTERACTIVE ACTION LISTENERS ---
 
     const handleActionRequiresTarget = (data: { requestType: CardRequestType, availableDiscardTypes?: CardType[] }) => {
-      console.log("Action requires target!", data.requestType);
- 
       if (data.requestType === CardRequestType.Five_Card_Combo && data.availableDiscardTypes) {
-        // 5-card combo resolved — show the type picker instead of target picker
         setFiveCardComboTypes(data.availableDiscardTypes);
         setNopeWindow(null);
       } else {
-        // Favor, 2-card, or 3-card combo — show target selection modal
         setActionRequiresTarget(data.requestType);
       }
     };
 
     const handleRequestFavorCard = (data: { sourceUserId: string, sourcePlayerName: string }) => {
-      console.log("Someone wants a favor!", data);
       setFavorRequest(data);
-      setNopeWindow(null); // Nope window has resolved
+      setNopeWindow(null);
     };
 
      /**
      * Fired to all players when an action resolves with a message.
      */
     const handleActionResolved = (data: { message: string }) => {
-      console.log("Action resolved:", data.message);
       setActionMessage(data.message);
-      setNopeWindow(null); // Nope window has resolved
- 
       // Auto-dismiss after 3 seconds
+      setNopeWindow(null);
       setTimeout(() => setActionMessage(null), 3000);
     };
  
     /**
      * Fired to a specific player when they attempt an invalid action.
      */
+
     const handlePlayError = (data: { message: string }) => {
-      console.log("Play error:", data.message);
       setPlayError(data.message);
- 
-      // Auto-dismiss after 3 seconds
       setTimeout(() => setPlayError(null), 3000);
     };
 
-    // Turn the listeners on
     socket.on('update_hand', handleUpdateHand);
     socket.on('player_draws_card', handlePlayerDrawsCard);
     socket.on('defuse_requires_index', handleDefuseRequiresIndex);
@@ -258,7 +271,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
   });
     socket.on('game_over', (data: { winnerId: string, winnerName: string }) => setGameOver(data));
 
-    // Turn the listeners off
     return () => {
       socket.off('update_hand', handleUpdateHand);
       socket.off('player_draws_card', handlePlayerDrawsCard);
@@ -355,7 +367,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   return (
     <GameContext.Provider value={{ 
-myHand, 
+      myHand, 
       lastPlayedCard, 
       seeTheFutureCards,
       closeSeeTheFuture,
@@ -381,6 +393,9 @@ myHand,
       dismissExplosion,
       eliminatedPlayerIds,
       explosionNotification,
+      cardAnimQueue,
+      shiftCardAnim,
+      playerHandCounts,
     }}>
       {children}
     </GameContext.Provider>

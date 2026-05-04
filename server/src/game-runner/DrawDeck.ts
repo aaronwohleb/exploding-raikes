@@ -8,12 +8,13 @@ export class DrawDeck {
     private _deck: Card[];
 
     private readonly HandSize: number = 7;
+
     /**
      * Builds a full deck of Exploding Kauffman Cards.
      */
     public constructor(game: Game) {
         this._deck = [];
-        // Make full deck of cards (Hard coded and subject to change)
+        // Make full deck of cards
         const cardConfigs = [
             { type: CardType.Attack, count: 4 },
             { type: CardType.Bathroom_Drain_Bug, count: 4 },
@@ -47,7 +48,7 @@ export class DrawDeck {
 
         const extraConfigs = [
             { type: CardType.Defuse, count: 8 - game.playerList.length },
-            { type: CardType.Exploding_Kauffman, count: 4 }
+            { type: CardType.Exploding_Kauffman, count: game.playerList.length - 1 }
         ];
 
         for (const config of extraConfigs) {
@@ -70,7 +71,6 @@ export class DrawDeck {
     public dealCards(game: Game, currId: number) {
         for (let i = 0; i < this.HandSize; i++) {
             for (let player of game.playerList) {
-                //TODO: add undefined checking for shift
                 player.hand.push(this._deck.shift()!)
             }
         }
@@ -133,21 +133,6 @@ export class DrawDeck {
         }
     }
 
-    /**
-     * Gets the DrawDeck object's deck.
-     * 
-     * @return the DrawDeck object's deck
-     */
-    public get deck(): Card[] {
-        return this._deck;
-    }
-
-    /**
-     * Sets the DrawDeck object's deck.
-     * 
-     * @param value the edited DrawDeck object's deck
-     */
-    public set deck(value: Card[]) {
-        this._deck = value;
-    }
+    public get deck(): Card[] { return this._deck; }
+    public set deck(value: Card[]) { this._deck = value; }
 }

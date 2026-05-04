@@ -232,7 +232,8 @@ export class Game {
 
     /**
      * Constructs a new Game object when called containing a player list and a default game state.
-     * * @param playerList the list of players playing the game
+     * 
+     * @param playerList the list of players playing the game
      */
     public constructor(playerList: Player[]) {
         this._playerList = playerList;
@@ -243,83 +244,18 @@ export class Game {
 
     }
 
-    /**
-     * Gets the game's playerList.
-     * * @return the playerList
-     */
-    public get playerList(): Player[] {
-        return this._playerList;
-    }
+    public get playerList(): Player[] { return this._playerList; }
+    public set playerList(value: Player[]) { this._playerList = value; }
 
-    /**
-     * Sets the game's playerlist.
-     * * @param value the edited playerList
-     */
-    public set playerList(value: Player[]) {
-        this._playerList = value;
-    }
+    public get drawDeck(): DrawDeck { return this._drawDeck; }
+    public set drawDeck(value: DrawDeck) { this._drawDeck = value; }
 
-    /**
-     * Gets the game's drawDeck.
-     * * @return the drawDeck
-     */
-    public get drawDeck(): DrawDeck {
-        return this._drawDeck;
-    }
+    public get discardPile(): DiscardPile { return this._discardPile; }
+    public set discardPile(value: DiscardPile) { this._discardPile = value; }
 
-    /**
-     * Sets the game's drawDeck.
-     * * @param value the edited drawDeck
-     */
-    public set drawDeck(value: DrawDeck) {
-        this._drawDeck = value;
-    }
+    public get activePlayer(): Player { return this._activePlayer; }
+    public set activePlayer(value: Player) { this._activePlayer = value; }
 
-    /**
-     * Gets the game's discardPile.
-     * * @return the discardPile
-     */
-    public get discardPile(): DiscardPile {
-        return this._discardPile;
-    }
-
-    /**
-     * Sets the game's playerlist.
-     * * @param value the edited discardPile
-     */
-    public set discardPile(value: DiscardPile) {
-        this._discardPile = value;
-    }
-
-    /**
-     * Gets the game's activePlayer.
-     * * @return the activePlayer
-     */
-    public get activePlayer(): Player {
-        return this._activePlayer;
-    }
-
-    /**
-     * Sets the game's activePlayer.
-     * * @param value the edited activePlayer
-     */
-    public set activePlayer(value: Player) {
-        this._activePlayer = value;
-    }
-
-    /**
-     * Gets the game's turns remaining counter.
-     * * @return the numTurns
-     */
-    public get numTurns(): number {
-        return this._numTurns;
-    }
-
-    /**
-     * Sets the game's turns remaining counter.
-     * * @param value the edited numTurns
-     */
-    public set numTurns(value: number) {
-        this._numTurns = value;
-    }
+    public get numTurns(): number { return this._numTurns; }
+    public set numTurns(value: number) { this._numTurns = value; }
 }

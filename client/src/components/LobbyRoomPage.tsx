@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate} from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLobby } from "../context/LobbyContext";
 import { useGameSocket } from "../context/SocketContext";
@@ -9,7 +9,7 @@ export default function LobbyRoomPage() {
   const { socket } = useGameSocket();
   const navigate = useNavigate();
   const { currentFrontendUser } = useAuth();
-  const { currentLobby, clearLobby, toggleReadyStatus, leaveCurrentLobby, startGame } = useLobby();
+  const { currentLobby, toggleReadyStatus, leaveCurrentLobby, startGame } = useLobby();
 
   const [copied, setCopied] = useState(false);
   const [isTogglingReady, setIsTogglingReady] = useState(false);
@@ -30,8 +30,6 @@ export default function LobbyRoomPage() {
       </div>
     );
   }
-  console.log("host id is", currentLobby.hostId, "and current user id is", currentFrontendUser._id);
-  // Derived state for the UI
   const isHost = currentLobby.hostId === currentFrontendUser._id;
   const isCurrentlyReady = currentLobby.readyStatus[currentFrontendUser._id] || false;
   const allPlayersReady = currentLobby.players.length > 1 && 
@@ -131,8 +129,7 @@ export default function LobbyRoomPage() {
 
           <AnimatePresence>
             {currentLobby.players.map((player: any) => {
-              // DIRECT RECORD LOOKUP! This is why we used the Record<string, boolean> dictionary!
-              const isPlayerReady = currentLobby.readyStatus[player._id]; 
+              const isPlayerReady = currentLobby.readyStatus[player._id];
               const isPlayerHost = currentLobby.hostId === player._id;
 
               return (
