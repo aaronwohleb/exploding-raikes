@@ -20,7 +20,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     // Initialize Socket if user is logged in by pulling user's JWT
     const token = localStorage.getItem('token');
     if (currentFrontendUser && token && !socket) {
-      const newSocket = io('http://localhost:3001', {
+      const newSocket = io(import.meta.env.VITE_WS_URL, {
         autoConnect: true,
         auth: { token }, 
         reconnection: true,

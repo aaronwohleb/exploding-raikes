@@ -5,7 +5,8 @@ import BackendUser from "../types/BackendUser";
 import { FrontendUser } from "../types/types";
 
 
-const JWT_SECRET = process.env.JWT_SECRET || "super_cool_key";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error("JWT_SECRET env variable is not set");
 
 /**
  * Converts a backend User object to a frontend User object by selecting only necessary fields

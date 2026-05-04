@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import 'dotenv/config';
 import http from 'http';
 import cors from 'cors';
 import { Server } from 'socket.io';
@@ -13,14 +14,16 @@ import userRoutes from "./routes/userRoutes";
 const app = express();
 const server = http.createServer(app);
 
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN;
+
 const io = new Server(server, {
-   cors: {origin: "http://localhost:3000", credentials: true} 
+   cors: {origin: CLIENT_ORIGIN, credentials: true}
   });
 
 app.set('io', io);
 
 app.use(cors({
-  origin: "http://localhost:3000",
+  origin: CLIENT_ORIGIN,
   credentials: true
 }));
 app.use(express.json());

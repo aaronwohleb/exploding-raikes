@@ -1,9 +1,8 @@
 import axios from 'axios';
 import { AuthResponse, FrontendUser, LobbyState } from '../types/types';
 
-// Axios instance configured to point at the local backend
 const apiClient = axios.create({
-  baseURL: 'http://localhost:3001/api', // Backend URL
+  baseURL: import.meta.env.VITE_API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
